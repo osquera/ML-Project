@@ -51,7 +51,7 @@ print(X.shape)
 Y = X - np.ones((2380, 1)) * X.mean(axis=0)
 
 # PCA by computing SVD of Y
-U, S, V = svd(Y, full_matrices=False)
+U, S, Vh = svd(Y, full_matrices=False)
 
 # Compute variance explained by principal components
 rho = (S * S) / (S * S).sum()
@@ -72,15 +72,11 @@ plt.legend(['Individual', 'Cumulative', 'Threshold 90', 'Threshold 95'])
 plt.grid()
 plt.show()
 
-# We want to find the correlation
-print(df[["MinTemp", "MaxTemp", "Evaporation", "Sunshine", "WindGustSpeed", "Humidity9am", "Pressure9am",
-          "Cloud9am", "Temp9am", "Rainfall"]].corr())
 
 # We also want to do the correlation between the attributes
 sns.displot(df, x="MinTemp", kde=True)
 plt.title("Minimum temperature distribution")
 plt.show()
-
 
 sns.displot(df, x="MaxTemp", kde=True)
 plt.title("Maximum temperature distribution", y=1.0, pad=-14)
@@ -122,24 +118,22 @@ plt.show()
 #sns.pairplot(df[["MinTemp", "MaxTemp", "WindGustSpeed", "Humidity9am", "Pressure9am","Cloud9am", "Temp9am", "Rainfall"]])
 #plt.show()
 
+# We want to find the correlation
+print(df[["MinTemp", "MaxTemp", "Evaporation", "Sunshine", "WindGustSpeed", "Humidity9am", "Pressure9am",
+          "Cloud9am", "Temp9am", "Rainfall"]].corr())
+
 sns.heatmap(df[["MinTemp", "MaxTemp", "Evaporation", "Sunshine", "WindGustSpeed", "Humidity9am", "Pressure9am",
                 "Cloud9am", "Temp9am", "Rainfall"]].corr(), annot=True)
 plt.xticks(rotation=45)
 plt.show()
 
-# We want to project the data onto the principal components:
 
-U, S, Vh = svd(Y, full_matrices=False)
 # scipy.linalg.svd returns "Vh", which is the Hermitian (transpose)
 # of the vector V. So, for us to obtain the correct V, we transpose:
 V = Vh.T
 
 # Project the centered data onto principal component space
 Z = Y @ V
-
-# Indices of the principal components to be plotted
-i = 0
-j = 1
 
 # Plot PCA of the data
 f = plt.figure(figsize = (12,10))
@@ -157,8 +151,6 @@ for x in range(1,5,1):
             plt.plot(Z[:, x], Z[:, y], 'o', alpha=.5)
 
         location += 1
-
-
 
 # Output result to screen
 plt.show()
