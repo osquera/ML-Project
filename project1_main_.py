@@ -35,7 +35,7 @@ print(df.head())
 
 #We turn the dataset into numpy array
 
-X = df[["MinTemp", "MaxTemp", "Evaporation", "Sunshine", "WindGustSpeed", "Humidity9am", "Pressure9am",
+X = df[["MinTemp", "MaxTemp", "WindGustSpeed", "Humidity9am", "Pressure9am",
          "Cloud9am", "Temp9am","Rainfall"]].to_numpy()
 print(X.shape)
 
@@ -71,4 +71,13 @@ print(df[["MinTemp", "MaxTemp", "Evaporation", "Sunshine", "WindGustSpeed", "Hum
 #We also want to do the
 sns.displot(df, x="MinTemp", hue="RainToday",kde=True)
 plt.title("Minimum temperature distribution")
+plt.show()
+
+
+sns.pairplot(df[["MinTemp", "MaxTemp","WindGustSpeed", "Humidity9am", "Pressure9am",
+         "Cloud9am", "Temp9am","Rainfall"]])
+plt.show()
+sns.heatmap(df[["MinTemp", "MaxTemp", "Evaporation", "Sunshine", "WindGustSpeed", "Humidity9am", "Pressure9am",
+         "Cloud9am", "Temp9am","Rainfall"]].corr(),annot=True)
+plt.xticks(rotation=45)
 plt.show()
