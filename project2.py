@@ -55,8 +55,6 @@ Error_test_rlr = np.empty((K,1))
 w_rlr = np.empty((M,K))
 Error_lambda = np.empty(len(lambdas))
 N_k = np.empty((len(lambdas),K))
-mu = np.empty((K, M-1))
-sigma = np.empty((K, M-1))
 
 # Loop over lambda values
 for i, l in enumerate(lambdas):
@@ -70,11 +68,9 @@ for i, l in enumerate(lambdas):
         X_test = X[test_index]
         y_test = y[test_index]
 
-        mu[k, :] = np.mean(X_train[:, 1:], 0)
-        sigma[k, :] = np.std(X_train[:, 1:], 0)
-    
-        X_train[:, 1:] = (X_train[:, 1:] - mu[k, :] ) / sigma[k, :] 
-        X_test[:, 1:] = (X_test[:, 1:] - mu[k, :] ) / sigma[k, :] 
+        #Hvorfor ikke også y?
+        X_train[:, 1:] = (X_train[:, 1:] - np.mean(X_train[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
+        X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
 
         Xty = X_train.T @ y_train
         XtX = X_train.T @ X_train
@@ -96,6 +92,8 @@ plt.xscale('log')
 plt.show()
 
 #%%
+# Regression part b.1
+
 # Create crossvalidation for split of data
 K1 = 10
 CV1 = model_selection.KFold(K1, shuffle=True)
@@ -103,6 +101,7 @@ CV1 = model_selection.KFold(K1, shuffle=True)
 K2 = 10
 CV2 = model_selection.KFold(K2, shuffle=True)
 
+lambdas = np.power(10.,range(-4,5))
 k1 = 0
 for par_idx, test_idx in CV1.split(X,y):
     X_par = X[par_idx]
@@ -122,17 +121,25 @@ for par_idx, test_idx in CV1.split(X,y):
         X_val = X_par[val_idx]
         y_val = y_par[val_idx]
 
+        X_train[:, 1:] = (X_train[:, 1:] - np.mean(X_train[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
+        X_val[:, 1:] = (X_val[:, 1:] - np.mean(X_val[:, 1:], 0)) / np.std(X_val[:, 1:], 0)
+
         baseline = np.mean(y_train)
         base_val_err[k2] = np.sum((y_val-baseline)**2)/len(y_val)
 
-        internal_cross_validation = 10
-        opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X_train, y_train, lambdas, internal_cross_validation)
-
-        rlr_lambda_value[k2] = opt_lambda
-        rlr_val_err[k2] = opt_val_err
-
+        for l in lambdas:
+            Xty = X_train.T @ y_train
+            XtX = X_train.T @ X_train
+            lambdaI = l * np.eye(M)
+            lambdaI[0,0] = 0
+            w_rlr[:,k] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
+            rlr_val_err[k2] = np.square(y_val-X_val @ w_rlr[:,k]).sum(axis=0)/y_val.shape[0]
 
         k2 += 1
+    
+    X_par[:, 1:] = (X_par[:, 1:] - np.mean(X_par[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
+    X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
+
     k1 += 1
 
 #%%
