@@ -93,11 +93,17 @@ CV1 = model_selection.KFold(K1, shuffle=True)
 K2 = 10
 CV2 = model_selection.KFold(K2, shuffle=True)
 
-for train_index, test_index in CV1.split(X,y):
-        # Extract training and test set for current CV fold
-        X_train = X[train_index]
-        y_train = y[train_index]
-        X_test = X[test_index]
-        y_test = y[test_index]
+for par_idx, test_idx in CV1.split(X,y):
+    # Extract training and test set for current CV fold
+    X_par = X[par_idx]
+    y_par = y[par_idx]
+    X_test = X[test_idx]
+    y_test = y[test_idx]
+
+    for train_idx, val_idx in CV2.split(X_par,y_par):
+        X_train = X_par[train_idx]
+        y_train = y_par[train_idx]
+        X_val = X_par[val_idx]
+        y_val = y_par[val_idx]
 
         
