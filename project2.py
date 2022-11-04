@@ -55,6 +55,8 @@ Error_test_rlr = np.empty((K,1))
 w_rlr = np.empty((M,K))
 Error_lambda = np.empty(len(lambdas))
 N_k = np.empty((len(lambdas),K))
+mu = np.empty((K, M-1))
+sigma = np.empty((K, M-1))
 
 # Loop over lambda values
 for i, l in enumerate(lambdas):
@@ -67,6 +69,12 @@ for i, l in enumerate(lambdas):
         y_train = y[train_index]
         X_test = X[test_index]
         y_test = y[test_index]
+
+        mu[k, :] = np.mean(X_train[:, 1:], 0)
+        sigma[k, :] = np.std(X_train[:, 1:], 0)
+    
+        X_train[:, 1:] = (X_train[:, 1:] - mu[k, :] ) / sigma[k, :] 
+        X_test[:, 1:] = (X_test[:, 1:] - mu[k, :] ) / sigma[k, :] 
 
         Xty = X_train.T @ y_train
         XtX = X_train.T @ X_train
@@ -95,18 +103,37 @@ CV1 = model_selection.KFold(K1, shuffle=True)
 K2 = 10
 CV2 = model_selection.KFold(K2, shuffle=True)
 
+k1 = 0
 for par_idx, test_idx in CV1.split(X,y):
-    # Extract training and test set for current CV fold
     X_par = X[par_idx]
     y_par = y[par_idx]
     X_test = X[test_idx]
     y_test = y[test_idx]
 
+    baseline = np.empty(K2)
+    base_val_err = np.empty(K2)
+    rlr_lambda_value = np.empty(K2)
+    rlr_val_err = np.empty(K2)
+
+    k2 = 0
     for train_idx, val_idx in CV2.split(X_par,y_par):
         X_train = X_par[train_idx]
         y_train = y_par[train_idx]
         X_val = X_par[val_idx]
         y_val = y_par[val_idx]
+
+        baseline = np.mean(y_train)
+        base_val_err[k2] = np.sum((y_val-baseline)**2)/len(y_val)
+
+        internal_cross_validation = 10
+        opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X_train, y_train, lambdas, internal_cross_validation)
+
+        rlr_lambda_value[k2] = opt_lambda
+        rlr_val_err[k2] = opt_val_err
+
+
+        k2 += 1
+    k1 += 1
 
 #%%
 # Classification
