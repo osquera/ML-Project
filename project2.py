@@ -27,8 +27,6 @@ target_clas = df_trans["RainToday"]
 var_reg_scaled = preprocessing.scale(var_reg)
 var_clas_scaled = preprocessing.scale(var_clas)
 
-#%%
-# Regression part a.2
 X = var_reg_scaled[:,:8]
 y = var_reg_scaled[:,8]
 #attributeNames = list(var_reg.columns)
@@ -38,6 +36,9 @@ N, M = X.shape
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 #attributeNames = [u'Offset']+attributeNames
 M = M+1
+
+#%%
+# Regression part a.2
 
 # Create crossvalidation partition for evaluation
 K = 10
@@ -51,6 +52,7 @@ Error_train_rlr = np.empty((K,1))
 Error_test_rlr = np.empty((K,1))
 w_rlr = np.empty((M,K))
 Error_lambda = np.empty(len(lambdas))
+N_k = np.empty((len(lambdas),K))
 
 # Loop over lambda values
 for i, l in enumerate(lambdas):
@@ -73,12 +75,29 @@ for i, l in enumerate(lambdas):
         w_rlr[:,k] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
         # Compute mean squared error with regularization with lambda
         Error_test_rlr[k] = np.square(y_test-X_test @ w_rlr[:,k]).sum(axis=0)/y_test.shape[0]
-
+        N_k[i, k] = len(y_test)
         k += 1
     
     # Estimate generalization error
-    Error_lambda[i] = np.sum(1/K * Error_test_rlr)
+    Error_lambda[i] = np.sum(N_k[i,:]/N * Error_test_rlr)
 
 plt.plot(lambdas, Error_lambda, linestyle='-', marker='o', color='b')
 plt.xscale('log')
 plt.show()
+
+#%%
+# Create crossvalidation for split of data
+K1 = 10
+CV1 = model_selection.KFold(K1, shuffle=True)
+
+K2 = 10
+CV2 = model_selection.KFold(K2, shuffle=True)
+
+for train_index, test_index in CV1.split(X,y):
+        # Extract training and test set for current CV fold
+        X_train = X[train_index]
+        y_train = y[train_index]
+        X_test = X[test_index]
+        y_test = y[test_index]
+
+        
