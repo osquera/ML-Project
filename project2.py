@@ -1,6 +1,5 @@
 #%%
 #Imports
-from project1 import df_trans
 import sys
 #Stationær
 #sys.path.insert(0, 'C:/Users/Mathias Damsgaard/Documents/GitHub/ML-Project')
@@ -20,17 +19,43 @@ from sklearn import preprocessing, model_selection
 import sklearn.linear_model as lm
 
 #%%
-# Define target and traning variables (without WindGustSpeed as per conclusion of last report)
-var_reg = df_trans.drop(["WindGustSpeed", "RainToday"], axis=1)
-var_clas = df_trans.drop(["WindGustSpeed", "Rainfall", "RainToday"], axis=1)
+# Loading data
+filename = 'Weather Training Data.csv'
+df = pd.read_csv(filename)
+
+df = df.loc[df['Location'] == 'Sydney']
+
+# Define variables (without WindGustSpeed as per conclusion of last report)
+df = df[["RainToday", "MinTemp", "MaxTemp", "Evaporation", "Sunshine", "Humidity9am", "Pressure9am",
+         "Cloud9am", "Temp9am", "Rainfall"]]
+
+# We remove all the places where RainToday is zero
+df = df.dropna(subset=["RainToday"])
+
+# We insert the mean on all NaN's in the dataset
+for x in list(df.columns.values)[1:]:
+    df[x] = df[x].fillna(df[x].mean())
+
+# We turn Yes and No into binary
+df.loc[df.RainToday == "Yes", "RainToday"] = 1
+df.loc[df.RainToday == "No", "RainToday"] = 0
+
+# We transform by the following operations:
+df_trans = df.copy()
+df_trans['Humidity9am'] = df_trans['Humidity9am'].transform(np.sqrt)
+df_trans['Evaporation'] = df_trans['Evaporation'].transform(np.sqrt)
+df_trans['MaxTemp'] = df_trans['MaxTemp'].transform(np.log)
+
+# Define target and traning variables
+var = df_trans.drop(["RainToday", "Rainfall"], axis=1)
 target_clas = df_trans["RainToday"]
+target_reg = df_trans["Rainfall"]
 
 # Standardize data
-var_reg_scaled = preprocessing.scale(var_reg)
-var_clas_scaled = preprocessing.scale(var_clas)
+var_scaled = preprocessing.scale(var)
 
-X = var_reg_scaled[:,:8]
-y = var_reg_scaled[:,8]
+X = var_scaled
+y = np.array(target_reg)
 #attributeNames = list(var_reg.columns)
 N, M = X.shape
 
@@ -141,6 +166,51 @@ for par_idx, test_idx in CV1.split(X,y):
     X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
 
     k1 += 1
+
+    CV = model_selection.KFold(cvf, shuffle=True)
+    M = X.shape[1]
+    w = np.empty((M,cvf,len(lambdas)))
+    train_error = np.empty((cvf,len(lambdas)))
+    test_error = np.empty((cvf,len(lambdas)))
+    f = 0
+    y = y.squeeze()
+    for train_index, test_index in CV.split(X,y):
+        X_train = X[train_index]
+        y_train = y[train_index]
+        X_test = X[test_index]
+        y_test = y[test_index]
+        
+        # Standardize the training and set set based on training set moments
+        mu = np.mean(X_train[:, 1:], 0)
+        sigma = np.std(X_train[:, 1:], 0)
+        
+        X_train[:, 1:] = (X_train[:, 1:] - mu) / sigma
+        X_test[:, 1:] = (X_test[:, 1:] - mu) / sigma
+        
+        # precompute terms
+        Xty = X_train.T @ y_train
+        XtX = X_train.T @ X_train
+        for l in range(0,len(lambdas)):
+            # Compute parameters for current value of lambda and current CV fold
+            # note: "linalg.lstsq(a,b)" is substitue for Matlab's left division operator "\"
+            lambdaI = lambdas[l] * np.eye(M)
+            lambdaI[0,0] = 0 # remove bias regularization
+            w[:,f,l] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
+            # Evaluate training and test performance
+            train_error[f,l] = np.power(y_train-X_train @ w[:,f,l].T,2).mean(axis=0)
+            test_error[f,l] = np.power(y_test-X_test @ w[:,f,l].T,2).mean(axis=0)
+    
+        f=f+1
+
+    opt_val_err = np.min(np.mean(test_error,axis=0))
+    opt_lambda = lambdas[np.argmin(np.mean(test_error,axis=0))]
+    train_err_vs_lambda = np.mean(train_error,axis=0)
+    test_err_vs_lambda = np.mean(test_error,axis=0)
+    mean_w_vs_lambda = np.squeeze(np.mean(w,axis=1))
+    
+    return opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda
+        
+
 
 #%%
 # Classification
