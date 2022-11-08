@@ -206,10 +206,7 @@ for par_idx, test_idx in CV1.split(X,y):
     opt_lambda = lambdas[np.argmin(np.mean(test_error,axis=0))]
     train_err_vs_lambda = np.mean(train_error,axis=0)
     test_err_vs_lambda = np.mean(test_error,axis=0)
-    mean_w_vs_lambda = np.squeeze(np.mean(w,axis=1))
-    
-    return opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda
-        
+    mean_w_vs_lambda = np.squeeze(np.mean(w,axis=1))        
 
 
 #%%
