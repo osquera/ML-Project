@@ -215,14 +215,15 @@ for par_idx, test_idx in CV1.split(X,y):
     # Evaluate test error
     lambda_test_err[k1] = np.power(y_test-X_test @ w_rlr_par[:,k1].T,2).mean(axis=0)
 
-    print(f"Baseline test error for fold {k1}: {base_test_err[k1]}")
-    print(f"Lambda test error for fold {k1}: {lambda_test_err[k1]} with lambda: {lambda_opt}")
+    print(f"Baseline test error for fold {k1+1}: {base_test_err[k1]}")
+    print(f"Lambda test error for fold {k1+1}: {lambda_test_err[k1]} with lambda: {lambda_opt}")
 
     k1 += 1
 
 base_gen = np.sum(N_k1/N * base_test_err)
-lambda_gen = np.sum(N_k1/N * lambda_test_err, axis=0)
-
+lambda_gen = np.sum(N_k1/N * lambda_test_err)
+print(f"Baseline gen error: {base_gen}")
+print(f"Lambda gen error: {lambda_gen}")
 
 #%%
 # Classification
