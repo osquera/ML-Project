@@ -126,88 +126,104 @@ CV1 = model_selection.KFold(K1, shuffle=True)
 K2 = 10
 CV2 = model_selection.KFold(K2, shuffle=True)
 
-lambdas = np.power(10.,range(-4,5))
+N, M = X.shape
+
 k1 = 0
+N_par = np.empty(K1)
+N_k1 = np.empty(K1)
+lambdas = np.power(10.,range(-4,5))
+base_par = np.empty(K1)
+base_gen_hat = np.empty(K1)
+lambda_gen_hat = np.empty((K1,len(lambdas)))
+base_test_err = np.empty(K1)
+lambda_test_err = np.empty(K1)
+w_rlr_par = np.empty((M,K1))
+lambda_gen = np.empty(K1)
+
 for par_idx, test_idx in CV1.split(X,y):
     X_par = X[par_idx]
     y_par = y[par_idx]
     X_test = X[test_idx]
     y_test = y[test_idx]
 
-    baseline = np.empty(K2)
+    N_par[k1] = len(y_par)
+    N_k1[k1] = len(y_test)
+
+    k2 = 0
+    N_k2 = np.empty(K2)
+
+    base_train = np.empty(K2)
     base_val_err = np.empty(K2)
     rlr_lambda_value = np.empty(K2)
     rlr_val_err = np.empty(K2)
 
-    k2 = 0
+    w_rlr = np.empty((M,K2,len(lambdas)))
+    lambda_val_err = np.empty((K2,len(lambdas)))
+    y = y.squeeze()
+
     for train_idx, val_idx in CV2.split(X_par,y_par):
         X_train = X_par[train_idx]
         y_train = y_par[train_idx]
         X_val = X_par[val_idx]
         y_val = y_par[val_idx]
+        
+        N_k2[k2] = len(y_val)
 
+        # Standardize the training and set based on the partial set
         X_train[:, 1:] = (X_train[:, 1:] - np.mean(X_train[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
         X_val[:, 1:] = (X_val[:, 1:] - np.mean(X_val[:, 1:], 0)) / np.std(X_val[:, 1:], 0)
 
-        baseline = np.mean(y_train)
-        base_val_err[k2] = np.sum((y_val-baseline)**2)/len(y_val)
+        # Baseline
+        base_train[k2] = np.mean(y_train)
+        base_val_err[k2] = np.sum((y_val-base_train[k2])**2)/len(y_val)
 
-        for l in lambdas:
-            Xty = X_train.T @ y_train
-            XtX = X_train.T @ X_train
-            lambdaI = l * np.eye(M)
-            lambdaI[0,0] = 0
-            w_rlr[:,k] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
-            rlr_val_err[k2] = np.square(y_val-X_val @ w_rlr[:,k]).sum(axis=0)/y_val.shape[0]
-
-        k2 += 1
-    
-    X_par[:, 1:] = (X_par[:, 1:] - np.mean(X_par[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
-    X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
-
-    k1 += 1
-
-    CV = model_selection.KFold(cvf, shuffle=True)
-    M = X.shape[1]
-    w = np.empty((M,cvf,len(lambdas)))
-    train_error = np.empty((cvf,len(lambdas)))
-    test_error = np.empty((cvf,len(lambdas)))
-    f = 0
-    y = y.squeeze()
-    for train_index, test_index in CV.split(X,y):
-        X_train = X[train_index]
-        y_train = y[train_index]
-        X_test = X[test_index]
-        y_test = y[test_index]
-        
-        # Standardize the training and set set based on training set moments
-        mu = np.mean(X_train[:, 1:], 0)
-        sigma = np.std(X_train[:, 1:], 0)
-        
-        X_train[:, 1:] = (X_train[:, 1:] - mu) / sigma
-        X_test[:, 1:] = (X_test[:, 1:] - mu) / sigma
-        
-        # precompute terms
+        # Regularization
+        # Precompute terms
         Xty = X_train.T @ y_train
         XtX = X_train.T @ X_train
         for l in range(0,len(lambdas)):
             # Compute parameters for current value of lambda and current CV fold
-            # note: "linalg.lstsq(a,b)" is substitue for Matlab's left division operator "\"
             lambdaI = lambdas[l] * np.eye(M)
             lambdaI[0,0] = 0 # remove bias regularization
-            w[:,f,l] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
-            # Evaluate training and test performance
-            train_error[f,l] = np.power(y_train-X_train @ w[:,f,l].T,2).mean(axis=0)
-            test_error[f,l] = np.power(y_test-X_test @ w[:,f,l].T,2).mean(axis=0)
+            w_rlr[:,k2,l] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
+            # Evaluate validation error
+            lambda_val_err[k2,l] = np.power(y_val-X_val @ w_rlr[:,k2,l].T,2).mean(axis=0)
+
+        k2 += 1
     
-        f=f+1
+    # Estimate generalization error
+    base_gen_hat[k1] = np.sum(N_k2/N_par[k1] * base_val_err)
+    lambda_gen_hat[k1] = np.sum(N_k2/N_par[k1] * lambda_val_err.T, axis=1)
+    lambda_opt = lambdas[np.argmin(lambda_gen_hat[k1])]
 
-    opt_val_err = np.min(np.mean(test_error,axis=0))
-    opt_lambda = lambdas[np.argmin(np.mean(test_error,axis=0))]
-    train_err_vs_lambda = np.mean(train_error,axis=0)
-    test_err_vs_lambda = np.mean(test_error,axis=0)
-    mean_w_vs_lambda = np.squeeze(np.mean(w,axis=1))        
+    X_par[:, 1:] = (X_par[:, 1:] - np.mean(X_par[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
+    X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
 
+    # Baseline
+    base_par[k1] = np.mean(y_par)
+    base_test_err[k1] = np.sum((y_par-base_par[k1])**2)/len(y_val)
+
+    # Regularization
+    # Precompute terms
+    Xty = X_par.T @ y_par
+    XtX = X_par.T @ X_par
+    
+    # Compute parameters for current value of lambda and current CV fold
+    lambdaI = lambda_opt * np.eye(M)
+    lambdaI[0,0] = 0 # remove bias regularization
+    w_rlr_par[:,k1] = np.linalg.solve(XtX+lambdaI,Xty).squeeze()
+    # Evaluate test error
+    lambda_test_err[k1] = np.power(y_test-X_test @ w_rlr_par[:,k1].T,2).mean(axis=0)
+
+    print(f"Baseline test error for fold {k1+1}: {base_test_err[k1]}")
+    print(f"Lambda test error for fold {k1+1}: {lambda_test_err[k1]} with lambda: {lambda_opt}")
+
+    k1 += 1
+
+base_gen = np.sum(N_k1/N * base_test_err)
+lambda_gen = np.sum(N_k1/N * lambda_test_err)
+print(f"Baseline gen error: {base_gen}")
+print(f"Lambda gen error: {lambda_gen}")
 
 #%%
 # Classification
@@ -216,9 +232,9 @@ for par_idx, test_idx in CV1.split(X,y):
 
 # 1 We want to solve a binary classification
 
-X = np.asarray(var_clas_scaled,dtype=float)
-y = np.asarray(target_clas.values.tolist(),dtype=int)
-attributeNames = [name for name in var_clas.columns.values.tolist()]
+X = np.asarray(var_scaled,dtype=float)
+y = np.array(target_clas.values)
+attributeNames = [name for name in var.columns.values.tolist()]
 N, M = X.shape
 
 # %%
