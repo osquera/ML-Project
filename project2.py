@@ -12,7 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from scipy.linalg import svd
-from scipy.stats import boxcox
+from scipy.stats import boxcox, t
 from scipy.io import loadmat
 
 from sklearn import preprocessing, model_selection
@@ -54,6 +54,9 @@ target_reg = df_trans["Rainfall"]
 # Standardize data
 var_scaled = preprocessing.scale(var)
 
+#%%
+# Regression part a.2
+# Define data
 X = var_scaled
 y = np.array(target_reg)
 #attributeNames = list(var_reg.columns)
@@ -63,9 +66,6 @@ N, M = X.shape
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 #attributeNames = [u'Offset']+attributeNames
 M = M+1
-
-#%%
-# Regression part a.2
 
 # Create crossvalidation partition for evaluation
 K = 10
@@ -116,6 +116,27 @@ plt.plot(lambdas, Error_lambda, linestyle='-', marker='o', color='b')
 plt.xscale('log')
 plt.show()
 
+#%%
+opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X,y,lambdas,K)
+# Display the results for the last cross-validation fold
+figure(9, figsize=(12,8))
+subplot(1,2,1)
+semilogx(lambdas,mean_w_vs_lambda.T[:,1:],'.-') # Don't plot the bias term
+xlabel('Regularization factor')
+ylabel('Mean Coefficient Values')
+grid()
+# You can choose to display the legend, but it's omitted for a cleaner 
+# plot, since there are many attributes
+#legend(attributeNames[1:], loc='best')
+
+subplot(1,2,2)
+title('Optimal lambda: 1e{0}'.format(np.log10(opt_lambda)))
+loglog(lambdas,train_err_vs_lambda.T,'b.-',lambdas,test_err_vs_lambda.T,'r.-')
+xlabel('Regularization factor')
+ylabel('Squared error (crossvalidation)')
+legend(['Train error','Validation error'])
+grid()
+show()
 #%%
 # Regression part b.1
 
@@ -224,6 +245,22 @@ base_gen = np.sum(N_k1/N * base_test_err)
 lambda_gen = np.sum(N_k1/N * lambda_test_err)
 print(f"Baseline gen error: {base_gen}")
 print(f"Lambda gen error: {lambda_gen}")
+
+#%%
+# Regression b3
+rho = 1/K2
+df = K2-1
+alpha = 0.05
+
+r_k1 = base_test_err - lambda_test_err
+r_hat = np.mean(r_k1)
+s_2 = np.var(r_k1)
+sigma_hat = np.sqrt((1/K2+1/(K1-1))*s_2)
+t_value = r_hat/(sigma_hat*np.sqrt(1/K2+1/(K1-1)))
+p_value = 2*t.cdf(-abs(t_value),df=df)
+print(f"Base vs rlr p-value: {p_value}")
+ci = t.interval(confidence=1-alpha,df=df,loc=r_hat,scale=sigma_hat)
+print(f"Base vs rlr CI: {ci}")
 
 #%%
 # Classification
