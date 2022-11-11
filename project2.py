@@ -298,7 +298,7 @@ for par_idx, test_idx in CV1.split(X,y_r):
     nn_test_err[k1] = sum(((y_test_est.float() - y_test_nn.float())**2)[0])/len(y_test_nn)
 
     print(f"Baseline test error for fold {k1+1}: {base_test_err[k1]}")
-    print(f"RLR test error for fold {k1+1}: {lambda_test_err[k1]} with lambda: {lambda_opt}")
+    print(f"RLR test error for fold {k1+1}: {lambda_test_err[k1]} with lambda: {1/lambda_opt}")
     print(f"NN test error for fold {k1+1}: {nn_test_err[k1]} with hidden units: {unit_opt}")
 
     k1 += 1
@@ -369,7 +369,7 @@ loss_fn = torch.nn.MSELoss()
 max_iter = 10000
 tolerance = 1e-10
 
-lambdas = np.float_power(10., np.arange(1,10,1))
+lambdas = np.float_power(10., np.arange(1,50,5))
 lambda_gen_hat = np.empty((K1, len(lambdas)))
 nn_gen_hat = np.empty((K1, len(n_units)))
 base_test_err = np.empty(K1)
@@ -409,7 +409,7 @@ for par_idx, test_idx in CV1.split(X, y_r):
         for l in range(0, len(lambdas)):
             # Compute parameters for current value of lambda and current CV fold
 
-            model = lm.LogisticRegression(max_iter=100000, solver='saga',C=lambdas[l])
+            model = lm.LogisticRegression(max_iter=100000, solver='saga',C=lambdas[l], penalty='l1')
             model = model.fit(X_train, y_train)
             y_est = model.predict(X_val)
 
@@ -428,6 +428,7 @@ for par_idx, test_idx in CV1.split(X, y_r):
                 torch.nn.Linear(h, h),
                 torch.nn.Tanh(),  # torch.nn.ReLU(),
                 torch.nn.Linear(h, 1),  # H hidden units to 1 output neuron
+                torch.nn.Sigmoid()  # final tranfer function
             )
 
             print(f'Model with {h} hidden units')
@@ -448,7 +449,8 @@ for par_idx, test_idx in CV1.split(X, y_r):
                                                                tolerance=tolerance)
 
             # Determine estimated class labels for test set
-            y_test_est = net(X_test_nn)  # activation of final note, i.e. prediction of network
+            y_sigmoid = net(X_test) # activation of final note, i.e. prediction of network
+            y_test_est = (y_sigmoid > .5).type(dtype=torch.uint8)
             # Determine validation error and error rate
             nn_val_err[k2, n] = sum(((y_test_est.float() - y_test_nn.float()) ** 2)[0]) / len(y_test_nn)
 
@@ -469,7 +471,7 @@ for par_idx, test_idx in CV1.split(X, y_r):
 
     # Regularization
     # Compute parameters for current value of lambda and current CV fold
-    model = lm.LogisticRegression(max_iter=100000, solver='saga', C=lambda_opt)
+    model = lm.LogisticRegression(max_iter=100000, solver='saga', C=lambda_opt, penalty='l1')
     model = model.fit(X_train, y_train)
     y_est = model.predict(X_test)
 
@@ -488,6 +490,7 @@ for par_idx, test_idx in CV1.split(X, y_r):
         torch.nn.Linear(unit_opt, unit_opt),
         torch.nn.Tanh(),  # torch.nn.ReLU(),
         torch.nn.Linear(unit_opt, 1),  # H hidden units to 1 output neuron
+        torch.nn.Sigmoid()  # final tranfer function
     )
 
     print(f'Optimal model with {unit_opt} hidden units')
@@ -508,7 +511,8 @@ for par_idx, test_idx in CV1.split(X, y_r):
                                                        tolerance=tolerance)
 
     # Determine estimated class labels for test set
-    y_test_est = net(X_test_nn)  # activation of final note, i.e. prediction of network
+    y_sigmoid1 = net(X_test)  # activation of final note, i.e. prediction of network
+    y_test_est1 = (y_sigmoid > .5).type(dtype=torch.uint8)
     # Determine validation error and error rate
     nn_test_err[k1] = sum(((y_test_est.float() - y_test_nn.float()) ** 2)[0]) / len(y_test_nn)
 
