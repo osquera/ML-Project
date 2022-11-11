@@ -151,12 +151,7 @@ loss_fn = torch.nn.MSELoss()
 max_iter = 10000
 tolerance = 1e-10
 
-k1 = 0
-N_par = np.empty(K1)
-N_k1 = np.empty(K1)
-lambdas = np.power(10.,range(-4,5))
-base_par = np.empty(K1)
-base_gen_hat = np.empty(K1)
+lambdas = np.power(10.,range(-4,9))
 lambda_gen_hat = np.empty((K1,len(lambdas)))
 nn_gen_hat = np.empty((K1,len(n_units)))
 base_test_err = np.empty(K1)
@@ -165,6 +160,7 @@ nn_test_err = np.empty(K1)
 w_rlr_par = np.empty((M,K1))
 lambda_gen = np.empty(K1)
 
+k1 = 0
 for par_idx, test_idx in CV1.split(X,y_r):
     print('Outer crossvalidation fold: {0}/{1}'.format(k1 + 1, K1))
     X_par = X[par_idx]
@@ -172,22 +168,13 @@ for par_idx, test_idx in CV1.split(X,y_r):
     X_test = X[test_idx]
     y_test = y_r[test_idx]
 
-    N_par[k1] = len(y_par)
-    N_k1[k1] = len(y_test)
-
-    k2 = 0
-    N_k2 = np.empty(K2)
-
-    base_train = np.empty(K2)
-    base_val_err = np.empty(K2)
     rlr_lambda_value = np.empty(K2)
     rlr_val_err = np.empty(K2)
-
     w_rlr = np.empty((M,K2,len(lambdas)))
     lambda_val_err = np.empty((K2,len(lambdas)))
-
     nn_val_err = np.empty((K2,len(n_units)))
 
+    k2 = 0
     for train_idx, val_idx in CV2.split(X_par,y_par):
         print('Inner crossvalidation fold: {0}/{1}'.format(k2 + 1, K2))
         X_train = X_par[train_idx]
@@ -195,15 +182,9 @@ for par_idx, test_idx in CV1.split(X,y_r):
         X_val = X_par[val_idx]
         y_val = y_par[val_idx]
         
-        N_k2[k2] = len(y_val)
-
         # Standardize the training and set based on the partial set
         X_train[:, 1:] = (X_train[:, 1:] - np.mean(X_train[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
         X_val[:, 1:] = (X_val[:, 1:] - np.mean(X_val[:, 1:], 0)) / np.std(X_val[:, 1:], 0)
-
-        # Baseline
-        base_train[k2] = np.mean(y_train)
-        base_val_err[k2] = np.sum((y_val-base_train[k2])**2)/len(y_val)
 
         # Regularization
         # Precompute terms
@@ -256,18 +237,17 @@ for par_idx, test_idx in CV1.split(X,y_r):
         k2 += 1
 
     # Estimate generalization error
-    base_gen_hat[k1] = np.sum(N_k2/N_par[k1] * base_val_err)
-    lambda_gen_hat[k1] = np.sum(N_k2/N_par[k1] * lambda_val_err.T, axis=1)
+    lambda_gen_hat[k1] = np.sum(1/K2 * lambda_val_err.T, axis=1)
     lambda_opt = lambdas[np.argmin(lambda_gen_hat[k1])]
-    nn_gen_hat[k1] = np.sum(N_k2/N_par[k1] * nn_val_err.T, axis=1)
+    nn_gen_hat[k1] = np.sum(1/K2 * nn_val_err.T, axis=1)
     unit_opt = n_units[np.argmin(nn_gen_hat[k1])]
 
     X_par[:, 1:] = (X_par[:, 1:] - np.mean(X_par[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
     X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
 
     # Baseline
-    base_par[k1] = np.mean(y_par)
-    base_test_err[k1] = np.sum((y_par-base_par[k1])**2)/len(y_val)
+    baseline = np.mean(y_par)
+    base_test_err[k1] = np.sum((y_par-baseline)**2)/len(y_val)
 
     # Regularization
     # Precompute terms
@@ -323,9 +303,9 @@ for par_idx, test_idx in CV1.split(X,y_r):
 
     k1 += 1
 
-base_gen = np.sum(N_k1/N * base_test_err)
-lambda_gen = np.sum(N_k1/N * lambda_test_err)
-nn_gen = np.sum(N_k1/N * nn_test_err)
+base_gen = np.sum(1/K1 * base_test_err)
+lambda_gen = np.sum(1/K1 * lambda_test_err)
+nn_gen = np.sum(1/K1 * nn_test_err)
 print(f"Baseline gen error: {base_gen}")
 print(f"RLR gen error: {lambda_gen}")
 print(f"NN gen error: {nn_gen}")
@@ -340,13 +320,9 @@ r_k1[0] = base_test_err - lambda_test_err
 r_k1[1] = base_test_err - nn_test_err
 r_k1[2] = lambda_test_err - nn_test_err
 r_hat = np.mean(r_k1, axis=1)
-print(0, r_hat)
 s_2 = np.var(r_k1, axis=1)
-print(1, s_2)
 sigma_hat = np.sqrt((1/K2+1/(K1-1))*s_2)
-print(2, sigma_hat)
 t_value = r_hat/(sigma_hat*np.sqrt(1/K2+1/(K1-1)))
-print(3, t_value)
 
 p_value_br = 2*t.cdf(-abs(t_value[0]),df=df)
 p_value_bn = 2*t.cdf(-abs(t_value[1]),df=df)
