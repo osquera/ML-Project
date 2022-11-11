@@ -1,12 +1,10 @@
 #%%
 #Imports
 import sys
-#Stationær
 #sys.path.insert(0, 'C:/Users/Mathias Damsgaard/Documents/GitHub/ML-Project')
-from toolbox_02450 import rlr_validate
+from toolbox_02450 import rlr_validate, train_neural_net
 from matplotlib.pylab import (figure, semilogx, loglog, xlabel, ylabel, legend,
                               title, subplot, show, grid)
-from sklearn import model_selection
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,6 +16,7 @@ from scipy.io import loadmat
 from sklearn import preprocessing, model_selection
 import sklearn.linear_model as lm
 
+import torch
 #%%
 # Loading data
 filename = 'Weather Training Data.csv'
@@ -54,18 +53,19 @@ target_reg = df_trans["Rainfall"]
 # Standardize data
 var_scaled = preprocessing.scale(var)
 
-#%%
-# Regression part a.2
 # Define data
 X = var_scaled
-y = np.array(target_reg)
-#attributeNames = list(var_reg.columns)
+y_r = np.asarray(target_reg.values.tolist(),dtype=int)
+y_c = np.asarray(target_clas.values.tolist(),dtype=int)
 N, M = X.shape
 
 # Add offset attribute
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 #attributeNames = [u'Offset']+attributeNames
 M = M+1
+
+#%%
+# Regression part a.2
 
 # Create crossvalidation partition for evaluation
 K = 10
@@ -86,14 +86,13 @@ for i, l in enumerate(lambdas):
     k = 0
 
     # Loop for K-fold
-    for train_index, test_index in CV.split(X,y):
+    for train_index, test_index in CV.split(X,y_r):
         # Extract training and test set for current CV fold
         X_train = X[train_index]
-        y_train = y[train_index]
+        y_train = y_r[train_index]
         X_test = X[test_index]
-        y_test = y[test_index]
+        y_test = y_r[test_index]
 
-        #Hvorfor ikke også y?
         X_train[:, 1:] = (X_train[:, 1:] - np.mean(X_train[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
         X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
 
@@ -117,7 +116,7 @@ plt.xscale('log')
 plt.show()
 
 #%%
-opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X,y,lambdas,K)
+opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X,y_r,lambdas,K)
 # Display the results for the last cross-validation fold
 figure(9, figsize=(12,8))
 subplot(1,2,1)
@@ -139,15 +138,18 @@ grid()
 show()
 #%%
 # Regression part b.1
-
 # Create crossvalidation for split of data
 K1 = 10
-CV1 = model_selection.KFold(K1, shuffle=True)
+CV1 = model_selection.KFold(K1, shuffle=True, random_state=69)
 
 K2 = 10
-CV2 = model_selection.KFold(K2, shuffle=True)
+CV2 = model_selection.KFold(K2, shuffle=True, random_state=420)
 
-N, M = X.shape
+# Define the model structure
+n_units = [1,5,10] # number of hidden units in the signle hidden layer
+loss_fn = torch.nn.MSELoss()
+max_iter = 10000
+tolerance = 1e-10
 
 k1 = 0
 N_par = np.empty(K1)
@@ -156,16 +158,19 @@ lambdas = np.power(10.,range(-4,5))
 base_par = np.empty(K1)
 base_gen_hat = np.empty(K1)
 lambda_gen_hat = np.empty((K1,len(lambdas)))
+nn_gen_hat = np.empty((K1,len(n_units)))
 base_test_err = np.empty(K1)
 lambda_test_err = np.empty(K1)
+nn_test_err = np.empty(K1)
 w_rlr_par = np.empty((M,K1))
 lambda_gen = np.empty(K1)
 
-for par_idx, test_idx in CV1.split(X,y):
+for par_idx, test_idx in CV1.split(X,y_r):
+    print('Outer crossvalidation fold: {0}/{1}'.format(k1 + 1, K1))
     X_par = X[par_idx]
-    y_par = y[par_idx]
+    y_par = y_r[par_idx]
     X_test = X[test_idx]
-    y_test = y[test_idx]
+    y_test = y_r[test_idx]
 
     N_par[k1] = len(y_par)
     N_k1[k1] = len(y_test)
@@ -180,9 +185,11 @@ for par_idx, test_idx in CV1.split(X,y):
 
     w_rlr = np.empty((M,K2,len(lambdas)))
     lambda_val_err = np.empty((K2,len(lambdas)))
-    y = y.squeeze()
+
+    nn_val_err = np.empty((K2,len(n_units)))
 
     for train_idx, val_idx in CV2.split(X_par,y_par):
+        print('Inner crossvalidation fold: {0}/{1}'.format(k2 + 1, K2))
         X_train = X_par[train_idx]
         y_train = y_par[train_idx]
         X_val = X_par[val_idx]
@@ -210,12 +217,56 @@ for par_idx, test_idx in CV1.split(X,y):
             # Evaluate validation error
             lambda_val_err[k2,l] = np.power(y_val-X_val @ w_rlr[:,k2,l].T,2).mean(axis=0)
 
+        y_nn = y_train.reshape(len(y_train),1)
+
+        for n, h in enumerate(n_units):
+            model_r = lambda: torch.nn.Sequential(
+            torch.nn.Linear(M, h),  # M features to H hiden units
+            # 1st transfer function, either Tanh or ReLU:
+            torch.nn.Tanh(),  # torch.nn.ReLU(),
+            torch.nn.Linear(h, h),
+            torch.nn.Tanh(),  # torch.nn.ReLU(),
+            torch.nn.Linear(h, h),
+            torch.nn.Tanh(),  # torch.nn.ReLU(),
+            torch.nn.Linear(h, 1),  # H hidden units to 1 output neuron
+            )
+
+            print(f'Model with {h} hidden units')
+
+            # Extract training and test set for current CV fold,
+            # and convert them to PyTorch tensors
+            X_train_nn = torch.Tensor(X_train)
+            y_train_nn = torch.Tensor(y_nn)
+            X_test_nn = torch.Tensor(X_val)
+            y_test_nn = torch.Tensor(y_val)
+
+            net, final_loss, learning_curve = train_neural_net(model_r,
+                                                            loss_fn,
+                                                            X=X_train_nn,
+                                                            y=y_train_nn,
+                                                            n_replicates=1,
+                                                            max_iter=max_iter,
+                                                            tolerance=tolerance)
+
+            print('\n\tBest loss: {}\n'.format(final_loss))
+
+            # Determine estimated class labels for test set
+            y_test_est = net(X_test_nn)  # activation of final note, i.e. prediction of network
+            y_test_nn = y_test_nn.type(dtype=torch.uint8)
+            # Determine validation error and error rate
+            nn_val_err[k2,n] = np.sum(np.power(y_test_est.detach().numpy() - y_test_nn.detach().numpy(),2))/ len(y_test_nn)
+
         k2 += 1
     
     # Estimate generalization error
     base_gen_hat[k1] = np.sum(N_k2/N_par[k1] * base_val_err)
     lambda_gen_hat[k1] = np.sum(N_k2/N_par[k1] * lambda_val_err.T, axis=1)
     lambda_opt = lambdas[np.argmin(lambda_gen_hat[k1])]
+    
+    nn_gen_hat[k1] = np.sum(N_k2/N_par[k1] * nn_val_err.T, axis=1)
+    print(nn_gen_hat)
+    unit_opt = n_units[np.argmin(nn_gen_hat[k1])]
+    print(unit_opt)
 
     X_par[:, 1:] = (X_par[:, 1:] - np.mean(X_par[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
     X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
@@ -236,16 +287,54 @@ for par_idx, test_idx in CV1.split(X,y):
     # Evaluate test error
     lambda_test_err[k1] = np.power(y_test-X_test @ w_rlr_par[:,k1].T,2).mean(axis=0)
 
+    model_r = lambda: torch.nn.Sequential(
+        torch.nn.Linear(M, unit_opt),  # M features to H hiden units
+        # 1st transfer function, either Tanh or ReLU:
+        torch.nn.Tanh(),  # torch.nn.ReLU(),
+        torch.nn.Linear(unit_opt, unit_opt),
+        torch.nn.Tanh(),  # torch.nn.ReLU(),
+        torch.nn.Linear(unit_opt, unit_opt),
+        torch.nn.Tanh(),  # torch.nn.ReLU(),
+        torch.nn.Linear(unit_opt, 1),  # H hidden units to 1 output neuron
+        )
+
+    print(f'Model with {unit_opt} hidden units')
+
+    # Extract training and test set for current CV fold,
+    # and convert them to PyTorch tensors
+    X_train_nn = torch.Tensor(X_par)
+    y_train_nn = torch.Tensor(y_par)
+    X_test_nn = torch.Tensor(X_test)
+    y_test_nn = torch.Tensor(y_test)
+
+    net, final_loss, learning_curve = train_neural_net(model_r,
+                                                    loss_fn,
+                                                    X=X_train_nn,
+                                                    y=y_train_nn,
+                                                    n_replicates=1,
+                                                    max_iter=max_iter,
+                                                    tolerance=tolerance)
+
+    print('\n\tBest loss: {}\n'.format(final_loss))
+
+    # Determine estimated class labels for test set
+    y_test_est = net(X_test_nn)  # activation of final note, i.e. prediction of network
+    y_test_nn = y_test_nn.type(dtype=torch.uint8)
+    # Determine validation error and error rate
+    nn_test_err[k1] = ((sum(y_test_est - y_test_nn)**2).type(torch.uint8) / len(y_test_nn)).data.numpy()
+
     print(f"Baseline test error for fold {k1+1}: {base_test_err[k1]}")
     print(f"Lambda test error for fold {k1+1}: {lambda_test_err[k1]} with lambda: {lambda_opt}")
+    print(f"NN test error for fold {k1+1}: {nn_test_err[k1]} with lambda: {unit_opt}")
 
     k1 += 1
 
 base_gen = np.sum(N_k1/N * base_test_err)
 lambda_gen = np.sum(N_k1/N * lambda_test_err)
+nn_gen = np.sum(N_k1/N * nn_test_err)
 print(f"Baseline gen error: {base_gen}")
 print(f"Lambda gen error: {lambda_gen}")
-
+print(f"NN gen error: {nn_gen}")
 #%%
 # Regression b3
 rho = 1/K2

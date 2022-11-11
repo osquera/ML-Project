@@ -1,3 +1,5 @@
+#%%
+# Import
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -7,13 +9,12 @@ from toolbox_02450 import train_neural_net, draw_neural_net, visualize_decision_
 import torch
 from sklearn import preprocessing, model_selection
 
-
 import sys
-
+sys.path.insert(0, 'C:/Users/mathi/Documents/GitHub/ML-Project')
 #sys.path.insert(0, "C:/Users/Jacob pc/PycharmProject/ML-Project")
 #plt.rcParams.update({'font.size': 12})
-
-
+#%%
+# Data
 filename = 'Weather Training Data.csv'
 df = pd.read_csv(filename)
 
@@ -62,32 +63,17 @@ X = np.concatenate((np.ones((X.shape[0],1)),X),1)
 #attributeNames = [u'Offset']+attributeNames
 M = M+1
 #%%
+# Train
 
 # K-fold CrossValidation (4 folds here to speed up this example)
 K = 10
 CV = model_selection.KFold(K, shuffle=True, random_state=420)
 
-# Setup figure for display of the decision boundary for the several crossvalidation folds.
-decision_boundaries = plt.figure(1, figsize=(10, 10))
-# Determine a size of a plot grid that fits visualizations for the chosen number
-# of cross-validation splits, if K=4, this is simply a 2-by-2 grid.
-subplot_size_1 = int(np.floor(np.sqrt(K)))
-subplot_size_2 = int(np.ceil(K / subplot_size_1))
-# Set overall title for all of the subplots
-plt.suptitle('Data and model decision boundaries', fontsize=20)
-# Change spacing of subplots
-plt.subplots_adjust(left=0, bottom=0, right=1, top=.9, wspace=.5, hspace=0.25)
-
-# Setup figure for display of learning curves and error rates in fold
-summaries, summaries_axes = plt.subplots(1, 2, figsize=(10, 5))
-# Make a list for storing assigned color of learning curve for up to K=10
-color_list = ['tab:orange', 'tab:green', 'tab:purple', 'tab:brown', 'tab:pink',
-              'tab:gray', 'tab:olive', 'tab:cyan', 'tab:red', 'tab:blue']
-
 # Define the model structure
-n_hidden_units1 = 1  # number of hidden units in the signle hidden layer
-n_hidden_units2 = 5
-n_hidden_units3 = 10
+n_units = [1,5,10] # number of hidden units in the signle hidden layer
+n_hidden_units1 = n_units[0]
+n_hidden_units2 = n_units[1]
+n_hidden_units3 = n_units[2]
 
 model1 = lambda: torch.nn.Sequential(
     torch.nn.Linear(M, n_hidden_units1),  # M features to H hiden units
@@ -131,12 +117,9 @@ print('Training model of type:\n{}\n'.format(str(model1())))
 tolerance = 1e-10
 
 # Do cross-validation:
-errors1 = []  # make a list for storing generalizaition error in each loop
-errors2 = []
-errors3 = []
+error_val = np.empty((K,3))  # make a list for storing validation error in each loop
 
 ############################ --- 1 --- ###############################
-
 for k, (train_index, test_index) in enumerate(CV.split(X, y)):
     print(f'Model 1 with {n_hidden_units1} hidden units: '+'\nCrossvalidation fold: {0}/{1}'.format(k + 1, K))
 
@@ -164,12 +147,9 @@ for k, (train_index, test_index) in enumerate(CV.split(X, y)):
     # Determine errors and error rate
     e1 = (y_test_est1 != y_test)
     error_rate1 = (sum(e1).type(torch.uint8) / len(y_test)).data.numpy()
-    errors1.append(error_rate1)  # store error rate for current CV fold
-
+    error_val[k,0] = error_rate1  # store error rate for current CV fold
 
 ############################ --- 2 --- ###############################
-
-
 for k, (train_index, test_index) in enumerate(CV.split(X, y)):
     print(f'Model 2 with {n_hidden_units2} hidden units: '+'\nCrossvalidation fold: {0}/{1}'.format(k + 1, K))
 
@@ -180,7 +160,6 @@ for k, (train_index, test_index) in enumerate(CV.split(X, y)):
     X_test = torch.Tensor(X[test_index, :])
     y_test = torch.Tensor(y[test_index])
 
-    print('\nCrossvalidation fold: {0}/{1}'.format(k + 1, K))
     net2, final_loss2, learning_curve2 = train_neural_net(model2,
                                                           loss_fn,
                                                           X=X_train,
@@ -200,17 +179,9 @@ for k, (train_index, test_index) in enumerate(CV.split(X, y)):
     # Determine errors and error rate
     e2 = (y_test_est2 != y_test)
     error_rate2 = (sum(e2).type(torch.uint8) / len(y_test)).data.numpy()
-    errors2.append(error_rate2)  # store error rate for current CV fold
-
-
-
+    error_val[k,1] = error_rate2  # store error rate for current CV fold
 
 ############################ --- 3 --- ###############################
-
-
-
-
-
 for k, (train_index, test_index) in enumerate(CV.split(X, y)):
     print(f'Model 3 with {n_hidden_units3} hidden units: '+'\nCrossvalidation fold: {0}/{1}'.format(k + 1, K))
 
@@ -221,7 +192,6 @@ for k, (train_index, test_index) in enumerate(CV.split(X, y)):
     X_test = torch.Tensor(X[test_index, :])
     y_test = torch.Tensor(y[test_index])
 
-    print('\nCrossvalidation fold: {0}/{1}'.format(k + 1, K))
     net3, final_loss3, learning_curve3 = train_neural_net(model3,
                                                           loss_fn,
                                                           X=X_train,
@@ -239,11 +209,12 @@ for k, (train_index, test_index) in enumerate(CV.split(X, y)):
     # Determine errors and error rate
     e3 = (y_test_est3 != y_test)
     error_rate3 = (sum(e3).type(torch.uint8) / len(y_test)).data.numpy()
-    errors3.append(error_rate3)  # store error rate for current CV fold
-
-
-
-
+    error_val[k,2] = error_rate3  # store error rate for current CV fold
 #%%
+# Error
+print(error_val)
+error_gen_hat = np.sum(1/K * error_val, axis=0)
+print(error_gen_hat)
+unit_opt = n_units[np.argmin(error_gen_hat)]
 
-print()
+print(unit_opt)
