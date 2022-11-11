@@ -369,7 +369,7 @@ loss_fn = torch.nn.MSELoss()
 max_iter = 10000
 tolerance = 1e-10
 
-lambdas = np.float_power(10., np.arange(1,50,5))
+lambdas = np.float_power(10., np.arange(0,2,0.2))
 lambda_gen_hat = np.empty((K1, len(lambdas)))
 nn_gen_hat = np.empty((K1, len(n_units)))
 base_test_err = np.empty(K1)
@@ -410,7 +410,6 @@ for par_idx, test_idx in CV1.split(X, y_c):
             model = lm.LogisticRegression(max_iter=100000, solver='saga',C=lambdas[l], penalty='l1')
             model = model.fit(X_train, y_train)
             y_est = model.predict(X_val)
-
             # Evaluate validation error
             lambda_val_err[k2, l] = np.sum(y_est != y_val) / len(y_est)
 
