@@ -369,7 +369,7 @@ loss_fn = torch.nn.MSELoss()
 max_iter = 10000
 tolerance = 1e-10
 
-lambdas = np.float_power(10., np.arange(0,2,0.2))
+lambdas = np.float_power(10., np.arange(0,1.4,0.2))
 lambda_gen_hat = np.empty((K1, len(lambdas)))
 nn_gen_hat = np.empty((K1, len(n_units)))
 base_test_err = np.empty(K1)
