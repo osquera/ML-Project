@@ -407,7 +407,7 @@ for par_idx, test_idx in CV1.split(X, y_c):
         for l in range(0, len(lambdas)):
             # Compute parameters for current value of lambda and current CV fold
 
-            model = lm.LogisticRegression(max_iter=100000, solver='saga',C=lambdas[l], penalty='l1')
+            model = lm.LogisticRegression(max_iter=100000, solver='liblinear',C=lambdas[l], penalty='l1')
             model = model.fit(X_train, y_train)
             y_est = model.predict(X_val)
 
@@ -448,7 +448,7 @@ for par_idx, test_idx in CV1.split(X, y_c):
 
             # Determine estimated class labels for test set
             y_sigmoid = net(X_test_nn)
-            y_test_est1 = (y_sigmoid > .5).type(dtype=torch.uint8)  # threshold output of sigmoidal function
+            y_test_est = (y_sigmoid > .5).type(dtype=torch.uint8)  # threshold output of sigmoidal function
             y_test_nn = y_test_nn.type(dtype=torch.uint8)
             # Determine errors and error rate
             nn_val_err[k2, n] = (sum(y_test_est != y_test).type(torch.uint8) / len(y_test)).data.numpy()
@@ -471,7 +471,7 @@ for par_idx, test_idx in CV1.split(X, y_c):
     # Regularization
     # Compute parameters for current value of lambda and current CV fold
 
-    model = lm.LogisticRegression(max_iter=100000, solver='saga', C=lambda_opt,penalty='l1')
+    model = lm.LogisticRegression(max_iter=100000, solver='liblinear', C=lambda_opt,penalty='l1')
     model = model.fit(X_par, y_par)
     y_est = model.predict(X_test)
 
@@ -512,7 +512,7 @@ for par_idx, test_idx in CV1.split(X, y_c):
 
     # Determine estimated class labels for test set
     y_sigmoid = net(X_test_nn)
-    y_test_est1 = (y_sigmoid > .5).type(dtype=torch.uint8)  # threshold output of sigmoidal function
+    y_test_est = (y_sigmoid > .5).type(dtype=torch.uint8)  # threshold output of sigmoidal function
     y_test_nn = y_test_nn.type(dtype=torch.uint8)
     # Determine errors and error rate
     nn_val_err[k2, n] = (sum(y_test_est != y_test).type(torch.uint8) / len(y_test)).data.numpy()
