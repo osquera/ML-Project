@@ -518,7 +518,7 @@ for par_idx, test_idx in CV1.split(X, y_c):
     nn_val_err[k2, n] = (sum(y_test_est != y_test).type(torch.uint8) / len(y_test)).data.numpy()
 
     print(f"Baseline test error for fold {k1 + 1}: {base_test_err[k1]}")
-    print(f"RLR test error for fold {k1 + 1}: {lambda_test_err[k1]} with lambda: {lambda_opt}")
+    print(f"RLR test error for fold {k1 + 1}: {lambda_test_err[k1]} with lambda: {1/lambda_opt}")
     print(f"NN test error for fold {k1 + 1}: {nn_test_err[k1]} with hidden units: {unit_opt}")
 
     k1 += 1
