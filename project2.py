@@ -237,9 +237,9 @@ for par_idx, test_idx in CV1.split(X,y_r):
         k2 += 1
 
     # Estimate generalization error
-    lambda_gen_hat[k1] = np.sum(1/K2 * lambda_val_err.T, axis=1)
+    lambda_gen_hat[k1] = np.sum(1/K2 * lambda_val_err, axis=0)
     lambda_opt = lambdas[np.argmin(lambda_gen_hat[k1])]
-    nn_gen_hat[k1] = np.sum(1/K2 * nn_val_err.T, axis=1)
+    nn_gen_hat[k1] = np.sum(1/K2 * nn_val_err, axis=0)
     unit_opt = n_units[np.argmin(nn_gen_hat[k1])]
 
     X_par[:, 1:] = (X_par[:, 1:] - np.mean(X_par[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
@@ -315,7 +315,6 @@ df = K2-1
 alpha = 0.05
 
 r_k1 = np.empty((3,K1))
-
 r_k1[0] = base_test_err - lambda_test_err
 r_k1[1] = base_test_err - nn_test_err
 r_k1[2] = lambda_test_err - nn_test_err
