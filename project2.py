@@ -146,7 +146,7 @@ K2 = 10
 CV2 = model_selection.KFold(K2, shuffle=True, random_state=420)
 
 # Define the model structure
-n_units = [1,5,10] # number of hidden units in the signle hidden layer
+n_units = [1,3,5] # number of hidden units in the signle hidden layer
 loss_fn = torch.nn.MSELoss()
 max_iter = 10000
 tolerance = 1e-10
@@ -248,25 +248,19 @@ for par_idx, test_idx in CV1.split(X,y_r):
                                                             max_iter=max_iter,
                                                             tolerance=tolerance)
 
-            print('\n\tBest loss: {}\n'.format(final_loss))
-
             # Determine estimated class labels for test set
             y_test_est = net(X_test_nn)  # activation of final note, i.e. prediction of network
-            y_test_nn = y_test_nn.type(dtype=torch.uint8)
             # Determine validation error and error rate
-            nn_val_err[k2,n] = np.sum(np.power(y_test_est.detach().numpy() - y_test_nn.detach().numpy(),2))/ len(y_test_nn)
+            nn_val_err[k2,n] = sum(((y_test_est.float() - y_test_nn.float())**2)[0])/len(y_test_nn)
 
         k2 += 1
-    
+
     # Estimate generalization error
     base_gen_hat[k1] = np.sum(N_k2/N_par[k1] * base_val_err)
     lambda_gen_hat[k1] = np.sum(N_k2/N_par[k1] * lambda_val_err.T, axis=1)
     lambda_opt = lambdas[np.argmin(lambda_gen_hat[k1])]
-    
     nn_gen_hat[k1] = np.sum(N_k2/N_par[k1] * nn_val_err.T, axis=1)
-    print(nn_gen_hat)
     unit_opt = n_units[np.argmin(nn_gen_hat[k1])]
-    print(unit_opt)
 
     X_par[:, 1:] = (X_par[:, 1:] - np.mean(X_par[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
     X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
@@ -287,6 +281,9 @@ for par_idx, test_idx in CV1.split(X,y_r):
     # Evaluate test error
     lambda_test_err[k1] = np.power(y_test-X_test @ w_rlr_par[:,k1].T,2).mean(axis=0)
 
+    # Neural network
+    y_nn = y_par.reshape(len(y_par),1)
+
     model_r = lambda: torch.nn.Sequential(
         torch.nn.Linear(M, unit_opt),  # M features to H hiden units
         # 1st transfer function, either Tanh or ReLU:
@@ -298,12 +295,12 @@ for par_idx, test_idx in CV1.split(X,y_r):
         torch.nn.Linear(unit_opt, 1),  # H hidden units to 1 output neuron
         )
 
-    print(f'Model with {unit_opt} hidden units')
+    print(f'Optimal model with {unit_opt} hidden units')
 
     # Extract training and test set for current CV fold,
     # and convert them to PyTorch tensors
     X_train_nn = torch.Tensor(X_par)
-    y_train_nn = torch.Tensor(y_par)
+    y_train_nn = torch.Tensor(y_nn)
     X_test_nn = torch.Tensor(X_test)
     y_test_nn = torch.Tensor(y_test)
 
@@ -315,17 +312,14 @@ for par_idx, test_idx in CV1.split(X,y_r):
                                                     max_iter=max_iter,
                                                     tolerance=tolerance)
 
-    print('\n\tBest loss: {}\n'.format(final_loss))
-
     # Determine estimated class labels for test set
     y_test_est = net(X_test_nn)  # activation of final note, i.e. prediction of network
-    y_test_nn = y_test_nn.type(dtype=torch.uint8)
     # Determine validation error and error rate
-    nn_test_err[k1] = ((sum(y_test_est - y_test_nn)**2).type(torch.uint8) / len(y_test_nn)).data.numpy()
+    nn_test_err[k1] = sum(((y_test_est.float() - y_test_nn.float())**2)[0])/len(y_test_nn)
 
     print(f"Baseline test error for fold {k1+1}: {base_test_err[k1]}")
-    print(f"Lambda test error for fold {k1+1}: {lambda_test_err[k1]} with lambda: {lambda_opt}")
-    print(f"NN test error for fold {k1+1}: {nn_test_err[k1]} with lambda: {unit_opt}")
+    print(f"RLR test error for fold {k1+1}: {lambda_test_err[k1]} with lambda: {lambda_opt}")
+    print(f"NN test error for fold {k1+1}: {nn_test_err[k1]} with hidden units: {unit_opt}")
 
     k1 += 1
 
@@ -333,24 +327,42 @@ base_gen = np.sum(N_k1/N * base_test_err)
 lambda_gen = np.sum(N_k1/N * lambda_test_err)
 nn_gen = np.sum(N_k1/N * nn_test_err)
 print(f"Baseline gen error: {base_gen}")
-print(f"Lambda gen error: {lambda_gen}")
+print(f"RLR gen error: {lambda_gen}")
 print(f"NN gen error: {nn_gen}")
 #%%
 # Regression b3
-rho = 1/K2
 df = K2-1
 alpha = 0.05
 
-r_k1 = base_test_err - lambda_test_err
-r_hat = np.mean(r_k1)
-s_2 = np.var(r_k1)
-sigma_hat = np.sqrt((1/K2+1/(K1-1))*s_2)
-t_value = r_hat/(sigma_hat*np.sqrt(1/K2+1/(K1-1)))
-p_value = 2*t.cdf(-abs(t_value),df=df)
-print(f"Base vs rlr p-value: {p_value}")
-ci = t.interval(confidence=1-alpha,df=df,loc=r_hat,scale=sigma_hat)
-print(f"Base vs rlr CI: {ci}")
+r_k1 = np.empty((3,K1))
 
+r_k1[0] = base_test_err - lambda_test_err
+r_k1[1] = base_test_err - nn_test_err
+r_k1[2] = lambda_test_err - nn_test_err
+r_hat = np.mean(r_k1, axis=1)
+print(0, r_hat)
+s_2 = np.var(r_k1, axis=1)
+print(1, s_2)
+sigma_hat = np.sqrt((1/K2+1/(K1-1))*s_2)
+print(2, sigma_hat)
+t_value = r_hat/(sigma_hat*np.sqrt(1/K2+1/(K1-1)))
+print(3, t_value)
+
+p_value_br = 2*t.cdf(-abs(t_value[0]),df=df)
+p_value_bn = 2*t.cdf(-abs(t_value[1]),df=df)
+p_value_rn = 2*t.cdf(-abs(t_value[2]),df=df)
+
+print(f"Base vs RLR p-value: {p_value_br}")
+ci_br = t.interval(confidence=1-alpha,df=df,loc=r_hat[0],scale=sigma_hat[0])
+print(f"Base vs RLR CI: {ci_br}")
+
+print(f"Base vs NN p-value: {p_value_bn}")
+ci_bn = t.interval(confidence=1-alpha,df=df,loc=r_hat[1],scale=sigma_hat[1])
+print(f"Base vs NN CI: {ci_bn}")
+
+print(f"RLR vs NN p-value: {p_value_rn}")
+ci_rn = t.interval(confidence=1-alpha,df=df,loc=r_hat[2],scale=sigma_hat[2])
+print(f"RLR vs NN CI: {ci_rn}")
 #%%
 # Classification
 
