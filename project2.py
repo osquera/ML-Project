@@ -61,7 +61,6 @@ N, M = X.shape
 
 # Add offset attribute
 X = np.concatenate((np.ones((X.shape[0],1)),X),1)
-#attributeNames = [u'Offset']+attributeNames
 M = M+1
 
 #%%
@@ -158,7 +157,6 @@ base_test_err = np.empty(K1)
 lambda_test_err = np.empty(K1)
 nn_test_err = np.empty(K1)
 w_rlr_par = np.empty((M,K1))
-lambda_gen = np.empty(K1)
 
 k1 = 0
 for par_idx, test_idx in CV1.split(X,y_r):
@@ -346,17 +344,6 @@ print(f"RLR vs NN CI: {ci_rn}")
 # Our method 2 is ANN
 
 # 1 We want to solve a binary classification
-
-X = var_scaled
-y_r = np.asarray(target_reg.values.tolist(),dtype=int)
-y_c = np.asarray(target_clas.values.tolist(),dtype=int)
-N, M = X.shape
-
-# Add offset attribute
-X = np.concatenate((np.ones((X.shape[0],1)),X),1)
-#attributeNames = [u'Offset']+attributeNames
-M = M+1
-
 K1 = 10
 CV1 = model_selection.KFold(K1, shuffle=True, random_state=69)
 
@@ -376,10 +363,9 @@ base_test_err = np.empty(K1)
 lambda_test_err = np.empty(K1)
 nn_test_err = np.empty(K1)
 w_rlr_par = np.empty((M, K1))
-lambda_gen = np.empty(K1)
 
 k1 = 0
-for par_idx, test_idx in CV1.split(X, y_r):
+for par_idx, test_idx in CV1.split(X, y_c):
     print('Outer crossvalidation fold: {0}/{1}'.format(k1 + 1, K1))
     X_par = X[par_idx]
     y_par = y_r[par_idx]
@@ -405,10 +391,8 @@ for par_idx, test_idx in CV1.split(X, y_r):
         X_val[:, 1:] = (X_val[:, 1:] - np.mean(X_val[:, 1:], 0)) / np.std(X_val[:, 1:], 0)
 
         # Regularization
-
         for l in range(0, len(lambdas)):
             # Compute parameters for current value of lambda and current CV fold
-
             model = lm.LogisticRegression(max_iter=100000, solver='saga',C=lambdas[l])
             model = model.fit(X_train, y_train)
             y_est = model.predict(X_val)
@@ -419,7 +403,7 @@ for par_idx, test_idx in CV1.split(X, y_r):
         y_nn = y_train.reshape(len(y_train), 1)
 
         for n, h in enumerate(n_units):
-            model_r = lambda: torch.nn.Sequential(
+            model_c = lambda: torch.nn.Sequential(
                 torch.nn.Linear(M, h),  # M features to H hiden units
                 # 1st transfer function, either Tanh or ReLU:
                 torch.nn.Tanh(),  # torch.nn.ReLU(),
@@ -428,6 +412,7 @@ for par_idx, test_idx in CV1.split(X, y_r):
                 torch.nn.Linear(h, h),
                 torch.nn.Tanh(),  # torch.nn.ReLU(),
                 torch.nn.Linear(h, 1),  # H hidden units to 1 output neuron
+                torch.nn.Sigmoid()  # final tranfer function
             )
 
             print(f'Model with {h} hidden units')
@@ -448,9 +433,11 @@ for par_idx, test_idx in CV1.split(X, y_r):
                                                                tolerance=tolerance)
 
             # Determine estimated class labels for test set
-            y_test_est = net(X_test_nn)  # activation of final note, i.e. prediction of network
-            # Determine validation error and error rate
-            nn_val_err[k2, n] = sum(((y_test_est.float() - y_test_nn.float()) ** 2)[0]) / len(y_test_nn)
+            y_sigmoid = net(X_test_nn)
+            y_test_est1 = (y_sigmoid > .5).type(dtype=torch.uint8)  # threshold output of sigmoidal function
+            y_test_nn = y_test_nn.type(dtype=torch.uint8)
+            # Determine errors and error rate
+            nn_val_err[k2, n] = (sum(y_test_est != y_test).type(torch.uint8) / len(y_test)).data.numpy()
 
         k2 += 1
 
@@ -470,7 +457,7 @@ for par_idx, test_idx in CV1.split(X, y_r):
     # Regularization
     # Compute parameters for current value of lambda and current CV fold
     model = lm.LogisticRegression(max_iter=100000, solver='saga', C=lambda_opt)
-    model = model.fit(X_train, y_train)
+    model = model.fit(X_par, y_par)
     y_est = model.predict(X_test)
 
     # Evaluate test error
@@ -479,7 +466,7 @@ for par_idx, test_idx in CV1.split(X, y_r):
     # Neural network
     y_nn = y_par.reshape(len(y_par), 1)
 
-    model_r = lambda: torch.nn.Sequential(
+    model_c = lambda: torch.nn.Sequential(
         torch.nn.Linear(M, unit_opt),  # M features to H hiden units
         # 1st transfer function, either Tanh or ReLU:
         torch.nn.Tanh(),  # torch.nn.ReLU(),
@@ -488,6 +475,7 @@ for par_idx, test_idx in CV1.split(X, y_r):
         torch.nn.Linear(unit_opt, unit_opt),
         torch.nn.Tanh(),  # torch.nn.ReLU(),
         torch.nn.Linear(unit_opt, 1),  # H hidden units to 1 output neuron
+        torch.nn.Sigmoid()  # final tranfer function
     )
 
     print(f'Optimal model with {unit_opt} hidden units')
@@ -508,9 +496,11 @@ for par_idx, test_idx in CV1.split(X, y_r):
                                                        tolerance=tolerance)
 
     # Determine estimated class labels for test set
-    y_test_est = net(X_test_nn)  # activation of final note, i.e. prediction of network
-    # Determine validation error and error rate
-    nn_test_err[k1] = sum(((y_test_est.float() - y_test_nn.float()) ** 2)[0]) / len(y_test_nn)
+    y_sigmoid = net(X_test_nn)
+    y_test_est1 = (y_sigmoid > .5).type(dtype=torch.uint8)  # threshold output of sigmoidal function
+    y_test_nn = y_test_nn.type(dtype=torch.uint8)
+    # Determine errors and error rate
+    nn_val_err[k2, n] = (sum(y_test_est != y_test).type(torch.uint8) / len(y_test)).data.numpy()
 
     print(f"Baseline test error for fold {k1 + 1}: {base_test_err[k1]}")
     print(f"RLR test error for fold {k1 + 1}: {lambda_test_err[k1]} with lambda: {lambda_opt}")
@@ -525,7 +515,7 @@ print(f"Baseline gen error: {base_gen}")
 print(f"RLR gen error: {lambda_gen}")
 print(f"NN gen error: {nn_gen}")
 # %%
-# Classification
+# Classification test
 df = K2 - 1
 alpha = 0.05
 
@@ -553,4 +543,3 @@ print(f"Base vs NN CI: {ci_bn}")
 print(f"RLR vs NN p-value: {p_value_rn}")
 ci_rn = t.interval(confidence=1 - alpha, df=df, loc=r_hat[2], scale=sigma_hat[2])
 print(f"RLR vs NN CI: {ci_rn}")
-
