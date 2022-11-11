@@ -50,7 +50,7 @@ target_reg = df_trans["Rainfall"]
 var_scaled = preprocessing.scale(var)
 
 X = var_scaled
-y = np.asarray(target_reg.values.tolist(),dtype=int)
+y = np.asarray(target_clas.values.tolist(),dtype=int)
 #attributeNames = list(var_reg.columns)
 N, M = X.shape
 

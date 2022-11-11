@@ -15,6 +15,7 @@ from sklearn import preprocessing, model_selection
 import sklearn.linear_model as lm
 
 import torch
+
 # %%
 # Loading data
 filename = 'Weather Training Data.csv'
@@ -346,7 +347,6 @@ print(f"RLR vs NN CI: {ci_rn}")
 # 1 We want to solve a binary classification
 
 X = var_scaled
-y_r = np.asarray(target_reg.values.tolist(), dtype=int)
 y_c = np.asarray(target_clas.values.tolist(), dtype=int)
 N, M = X.shape
 
@@ -394,7 +394,7 @@ for par_idx, test_idx in CV1.split(X, y_c):
         print('Inner cross-validation fold: {0}/{1}'.format(k2 + 1, K2))
         X_train = X_par[train_idx]
         y_train = y_par[train_idx]
-        X_val = X_par[val_idx]
+        X_val = X_par[val_idx,]
         y_val = y_par[val_idx]
 
         # Standardize the training and set based on the partial set
@@ -411,11 +411,12 @@ for par_idx, test_idx in CV1.split(X, y_c):
             # Evaluate validation error
             lambda_val_err[k2, l] = np.sum(y_est != y_val) / len(y_est)
 
-        y_nn = y_train.reshape(len(y_train), 1)
+        y_train_nn = y_train.reshape(len(y_train), 1)  # Ændrer så den passer i rigtige format, ex: [[0][1][1]]
+        y_val_nn = y_val.reshape(len(y_val), 1)
 
         for n, h in enumerate(n_units):
             model_c = lambda: torch.nn.Sequential(
-                torch.nn.Linear(M, h),  # M features to H hiden units
+                torch.nn.Linear(M, h),  # M features to H hidden units
                 # 1st transfer function, either Tanh or ReLU:
                 torch.nn.Tanh(),  # torch.nn.ReLU(),
                 torch.nn.Linear(h, h),
@@ -423,17 +424,18 @@ for par_idx, test_idx in CV1.split(X, y_c):
                 torch.nn.Linear(h, h),
                 torch.nn.Tanh(),  # torch.nn.ReLU(),
                 torch.nn.Linear(h, 1),  # H hidden units to 1 output neuron
-                torch.nn.Sigmoid()  # final tranfer function
+                torch.nn.Sigmoid()  # final transfer function
             )
 
             print(f'Model with {h} hidden units')
 
+
             # Extract training and test set for current CV fold,
             # and convert them to PyTorch tensors
             X_train_nn = torch.Tensor(X_train)
-            y_train_nn = torch.Tensor(y_nn)
+            y_train_nn = torch.Tensor(y_train_nn)
             X_test_nn = torch.Tensor(X_val)
-            y_test_nn = torch.Tensor(y_val)
+            y_test_nn = torch.Tensor(y_val_nn)
 
             net, final_loss, learning_curve = train_neural_net(model_c,
                                                                loss_fn,
@@ -448,7 +450,7 @@ for par_idx, test_idx in CV1.split(X, y_c):
             y_test_est = (y_sigmoid > .5).type(dtype=torch.uint8)  # threshold output of sigmoidal function
             y_test_nn = y_test_nn.type(dtype=torch.uint8)
             # Determine errors and error rate
-            nn_val_err[k2, n] = (sum(y_test_est != y_test).type(torch.uint8) / len(y_test)).data.numpy()
+            nn_val_err[k2, n] = (sum(y_test_est != y_test_nn).type(torch.uint8) / len(y_test)).data.numpy()
 
         k2 += 1
 
@@ -476,7 +478,8 @@ for par_idx, test_idx in CV1.split(X, y_c):
     lambda_test_err[k1] = np.sum(y_est != y_test) / len(y_est)
 
     # Neural network
-    y_nn = y_par.reshape(len(y_par), 1)
+    y_par_nn = y_par.reshape(len(y_par), 1)
+    y_test_nn = y_test.reshape(len(y_test), 1)
 
     model_c = lambda: torch.nn.Sequential(
         torch.nn.Linear(M, unit_opt),  # M features to H hiden units
@@ -495,9 +498,9 @@ for par_idx, test_idx in CV1.split(X, y_c):
     # Extract training and test set for current CV fold,
     # and convert them to PyTorch tensors
     X_train_nn = torch.Tensor(X_par)
-    y_train_nn = torch.Tensor(y_nn)
+    y_train_nn = torch.Tensor(y_par_nn)
     X_test_nn = torch.Tensor(X_test)
-    y_test_nn = torch.Tensor(y_test)
+    y_test_nn = torch.Tensor(y_test_nn)
 
     net, final_loss, learning_curve = train_neural_net(model_c,
                                                        loss_fn,
@@ -512,7 +515,7 @@ for par_idx, test_idx in CV1.split(X, y_c):
     y_test_est = (y_sigmoid > .5).type(dtype=torch.uint8)  # threshold output of sigmoidal function
     y_test_nn = y_test_nn.type(dtype=torch.uint8)
     # Determine errors and error rate
-    nn_val_err[k2, n] = (sum(y_test_est != y_test).type(torch.uint8) / len(y_test)).data.numpy()
+    nn_val_err[k2, n] = (sum(y_test_est != y_test_nn).type(torch.uint8) / len(y_test)).data.numpy()
 
     print(f"Baseline test error for fold {k1 + 1}: {base_test_err[k1]}")
     print(f"RLR test error for fold {k1 + 1}: {lambda_test_err[k1]} with lambda: {1 / lambda_opt}")
