@@ -15,7 +15,6 @@ from sklearn import preprocessing, model_selection
 import sklearn.linear_model as lm
 
 import torch
-
 # %%
 # Loading data
 filename = 'Weather Training Data.csv'
@@ -57,75 +56,31 @@ X = var_scaled
 y_r = np.asarray(target_reg.values.tolist(), dtype=int)
 y_c = np.asarray(target_clas.values.tolist(), dtype=int)
 N, M = X.shape
+attributeNames = list(var.columns)
 
 # Add offset attribute
 X = np.concatenate((np.ones((X.shape[0], 1)), X), 1)
-# attributeNames = [u'Offset']+attributeNames
+attributeNames = [u'Offset']+attributeNames
 M = M + 1
-
 # %%
 # Regression part a.2
 
 # Create cross-validation partition for evaluation
 K = 10
-CV = model_selection.KFold(K, shuffle=True)
 
 # Values of lambda
-lambdas = np.power(10., range(-4, 5))
+lambdas = np.float_power(10., np.arange(-4, 9, 0.1))
 
-# Initialize variables
-Error_train_rlr = np.empty((K, 1))
-Error_test_rlr = np.empty((K, 1))
-w_rlr = np.empty((M, K))
-Error_lambda = np.empty(len(lambdas))
-N_k = np.empty((len(lambdas), K))
-
-# Loop over lambda values
-for i, l in enumerate(lambdas):
-    k = 0
-
-    # Loop for K-fold
-    for train_index, test_index in CV.split(X, y_r):
-        # Extract training and test set for current CV fold
-        X_train = X[train_index]
-        y_train = y_r[train_index]
-        X_test = X[test_index]
-        y_test = y_r[test_index]
-
-        X_train[:, 1:] = (X_train[:, 1:] - np.mean(X_train[:, 1:], 0)) / np.std(X_train[:, 1:], 0)
-        X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
-
-        Xty = X_train.T @ y_train
-        XtX = X_train.T @ X_train
-
-        # Estimate weights for the value of lambda, on entire training set
-        lambdaI = l * np.eye(M)
-        lambdaI[0, 0] = 0  # Do not regularize the bias term
-        w_rlr[:, k] = np.linalg.solve(XtX + lambdaI, Xty).squeeze()
-        # Compute mean squared error with regularization with lambda
-        Error_test_rlr[k] = np.square(y_test - X_test @ w_rlr[:, k]).sum(axis=0) / y_test.shape[0]
-        N_k[i, k] = len(y_test)
-        k += 1
-
-    # Estimate generalization error
-    Error_lambda[i] = np.sum(N_k[i, :] / N * Error_test_rlr)
-
-plt.plot(lambdas, Error_lambda, linestyle='-', marker='o', color='b')
-plt.xscale('log')
-plt.show()
-
-# %%
 opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X, y_r, lambdas, K)
+
 # Display the results for the last cross-validation fold
-figure(9, figsize=(12, 8))
+figure(9, figsize=(15, 8))
 subplot(1, 2, 1)
 semilogx(lambdas, mean_w_vs_lambda.T[:, 1:], '.-')  # Don't plot the bias term
 xlabel('Regularization factor')
 ylabel('Mean Coefficient Values')
 grid()
-# You can choose to display the legend, but it's omitted for a cleaner 
-# plot, since there are many attributes
-# legend(attributeNames[1:], loc='best')
+legend(attributeNames[1:], loc='best')
 
 subplot(1, 2, 2)
 title('Optimal lambda: 1e{0}'.format(np.log10(opt_lambda)))
@@ -338,23 +293,9 @@ print(f"RLR vs NN p-value: {p_value_rn}")
 ci_rn = t.interval(confidence=1 - alpha, df=df, loc=r_hat[2], scale=sigma_hat[2])
 print(f"RLR vs NN CI: {ci_rn}")
 # %%
-#############################################
-############## Classification ###############
-#############################################
-
+# Classification 
 # Our method 2 is ANN
-
 # 1 We want to solve a binary classification
-
-X = var_scaled
-y_c = np.asarray(target_clas.values.tolist(), dtype=int)
-N, M = X.shape
-
-# Add offset attribute
-X = np.concatenate((np.ones((X.shape[0], 1)), X), 1)
-# attributeNames = [u'Offset']+attributeNames
-M = M + 1
-
 K1 = 10
 CV1 = model_selection.KFold(K1, shuffle=True, random_state=69)
 
@@ -404,12 +345,11 @@ for par_idx, test_idx in CV1.split(X, y_c):
         # Regularization
         for l in range(0, len(lambdas)):
             # Compute parameters for current value of lambda and current CV fold
-
             model = lm.LogisticRegression(max_iter=100000, solver='saga', C=lambdas[l], penalty='l1')
             model = model.fit(X_train, y_train)
             y_est = model.predict(X_val)
             # Evaluate validation error
-            lambda_val_err[k2, l] = np.sum(y_est != y_val) / len(y_est)
+            lambda_val_err[k2, l] = np.sum(y_est != y_val) / len(y_val)
 
         y_train_nn = y_train.reshape(len(y_train), 1)  # Ændrer så den passer i rigtige format, ex: [[0][1][1]]
         y_val_nn = y_val.reshape(len(y_val), 1)
@@ -428,7 +368,6 @@ for par_idx, test_idx in CV1.split(X, y_c):
             )
 
             print(f'Model with {h} hidden units')
-
 
             # Extract training and test set for current CV fold,
             # and convert them to PyTorch tensors
@@ -464,18 +403,17 @@ for par_idx, test_idx in CV1.split(X, y_c):
     X_test[:, 1:] = (X_test[:, 1:] - np.mean(X_test[:, 1:], 0)) / np.std(X_test[:, 1:], 0)
 
     # Baseline
-    baseline = np.mean(y_par)
-    base_test_err[k1] = np.sum((y_par - baseline) ** 2) / len(y_val)
+    baseline = np.bincount(y_par).argmax()
+    base_test_err[k1] = np.sum(baseline != y_test) / len(y_test)
 
     # Regularization
     # Compute parameters for current value of lambda and current CV fold
-
     model = lm.LogisticRegression(max_iter=100000, solver='saga', C=lambda_opt, penalty='l1')
     model = model.fit(X_par, y_par)
     y_est = model.predict(X_test)
 
     # Evaluate test error
-    lambda_test_err[k1] = np.sum(y_est != y_test) / len(y_est)
+    lambda_test_err[k1] = np.sum(y_est != y_test) / len(y_test)
 
     # Neural network
     y_par_nn = y_par.reshape(len(y_par), 1)
