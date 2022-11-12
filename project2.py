@@ -379,9 +379,9 @@ k1 = 0
 for par_idx, test_idx in CV1.split(X, y_c):
     print('Outer cross-validation fold: {0}/{1}'.format(k1 + 1, K1))
     X_par = X[par_idx]
-    y_par = y_r[par_idx]
+    y_par = y_c[par_idx]
     X_test = X[test_idx]
-    y_test = y_r[test_idx]
+    y_test = y_c[test_idx]
 
     rlr_lambda_value = np.empty(K2)
     rlr_val_err = np.empty(K2)
@@ -515,7 +515,7 @@ for par_idx, test_idx in CV1.split(X, y_c):
     y_test_est = (y_sigmoid > .5).type(dtype=torch.uint8)  # threshold output of sigmoidal function
     y_test_nn = y_test_nn.type(dtype=torch.uint8)
     # Determine errors and error rate
-    nn_val_err[k2, n] = (sum(y_test_est != y_test_nn).type(torch.uint8) / len(y_test)).data.numpy()
+    nn_test_err[k1] = (sum(y_test_est != y_test_nn).type(torch.uint8) / len(y_test)).data.numpy()
 
     print(f"Baseline test error for fold {k1 + 1}: {base_test_err[k1]}")
     print(f"RLR test error for fold {k1 + 1}: {lambda_test_err[k1]} with lambda: {1 / lambda_opt}")
