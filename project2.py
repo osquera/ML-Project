@@ -1,19 +1,13 @@
 # %%
 # Imports
-import sys
-# sys.path.insert(0, 'C:/Users/Mathias Damsgaard/Documents/GitHub/ML-Project')
 from toolbox_02450 import rlr_validate, train_neural_net
 from matplotlib.pylab import (figure, semilogx, loglog, xlabel, ylabel, legend,
                               title, subplot, show, grid)
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
-from scipy.stats import boxcox, t
-
+from scipy.stats import t
 from sklearn import preprocessing, model_selection
 import sklearn.linear_model as lm
-
 import torch
 # %%
 # Loading data
@@ -252,7 +246,7 @@ for par_idx, test_idx in CV1.split(X, y_r):
     nn_test_err[k1] = sum(((y_test_est.float() - y_test_nn.float()) ** 2)[0]) / len(y_test_nn)
 
     print(f"Baseline test error for fold {k1 + 1}: {base_test_err[k1]}")
-    print(f"RLR test error for fold {k1 + 1}: {lambda_test_err[k1]} with lambda: {1 / lambda_opt}")
+    print(f"RLR test error for fold {k1 + 1}: {lambda_test_err[k1]} with lambda: {lambda_opt}")
     print(f"NN test error for fold {k1 + 1}: {nn_test_err[k1]} with hidden units: {unit_opt}")
 
     k1 += 1
