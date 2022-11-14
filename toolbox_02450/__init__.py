@@ -130,7 +130,7 @@ def feature_selector_lr(X,y,cvf=10,features_record=None,loss_record=None,display
     return selected_features, features_record, loss_record
         
 
-def rlr_validate(X,y,lambdas,cvf=10):
+def rlr_validate(X,y,lambdas,cvf=10,rs=420):
     ''' Validate regularized linear regression model using 'cvf'-fold cross validation.
         Find the optimal lambda (minimizing validation error) from 'lambdas' list.
         The loss function computed as mean squared error on validation set (MSE).
@@ -152,7 +152,7 @@ def rlr_validate(X,y,lambdas,cvf=10):
         train_err_vs_lambda train error as function of lambda (vector)
         test_err_vs_lambda  test error as function of lambda (vector)
     '''
-    CV = model_selection.KFold(cvf, shuffle=True)
+    CV = model_selection.KFold(cvf, shuffle=True,random_state=rs)
     M = X.shape[1]
     w = np.empty((M,cvf,len(lambdas)))
     train_error = np.empty((cvf,len(lambdas)))

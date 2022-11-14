@@ -8,7 +8,6 @@ import pandas as pd
 from scipy.stats import t
 from sklearn import preprocessing, model_selection
 import sklearn.linear_model as lm
-from sklearn.model_selection import train_test_split
 import torch
 # %%
 # Loading data
@@ -60,63 +59,56 @@ M = M + 1
 # %%
 # Regression part a.2
 
-# Create cross-validation partition for evaluation
-K = 1
-
 # Values of lambda
 lambdas = np.float_power(10., np.arange(-4, 9, 0.1))
 
 # Initialize variables
-# T = len(lambdas)
-Error_train = np.empty((K, 1))
-Error_test = np.empty((K, 1))
-Error_train_rlr = np.empty((K, 1))
-Error_test_rlr = np.empty((K, 1))
-Error_train_nofeatures = np.empty((K, 1))
-Error_test_nofeatures = np.empty((K, 1))
-w_rlr = np.empty((M, K))
-mu = np.empty((K, M - 1))
-sigma = np.empty((K, M - 1))
-w_noreg = np.empty((M, K))
+Error_train = np.empty(1)
+Error_test = np.empty(1)
+Error_train_rlr = np.empty(1)
+Error_test_rlr = np.empty(1)
+Error_train_nofeatures = np.empty(1)
+Error_test_nofeatures = np.empty(1)
+w_rlr = np.empty(M)
+mu = np.empty(M - 1)
+sigma = np.empty(M - 1)
+w_noreg = np.empty(M)
 
-k = 0
-X_train, X_test, y_train, y_test = train_test_split(X, y_r)
+X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y_r, random_state=420)
 
 internal_cross_validation = 10
 
-opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X_train, y_train,
-                                                                                                  lambdas,
-                                                                                                  internal_cross_validation)
+opt_val_err, opt_lambda, mean_w_vs_lambda, train_err_vs_lambda, test_err_vs_lambda = rlr_validate(X_train, y_train, lambdas, internal_cross_validation, rs=420)
 
 # Standardize outer fold based on training set, and save the mean and standard
 # deviations since they're part of the model (they would be needed for
 # making new predictions) - for brevity we won't always store these in the scripts
-mu[k, :] = np.mean(X_train[:, 1:], 0)
-sigma[k, :] = np.std(X_train[:, 1:], 0)
+mu[:] = np.mean(X_train[:, 1:], 0)
+sigma[:] = np.std(X_train[:, 1:], 0)
 
-X_train[:, 1:] = (X_train[:, 1:] - mu[k, :]) / sigma[k, :]
-X_test[:, 1:] = (X_test[:, 1:] - mu[k, :]) / sigma[k, :]
+X_train[:, 1:] = (X_train[:, 1:] - mu[:]) / sigma[:]
+X_test[:, 1:] = (X_test[:, 1:] - mu[:]) / sigma[:]
 
 Xty = X_train.T @ y_train
 XtX = X_train.T @ X_train
 
 # Compute mean squared error without using the input data at all
-Error_train_nofeatures[k] = np.square(y_train - y_train.mean()).sum(axis=0) / y_train.shape[0]
-Error_test_nofeatures[k] = np.square(y_test - y_test.mean()).sum(axis=0) / y_test.shape[0]
+Error_train_nofeatures = np.square(y_train - y_train.mean()).sum(axis=0) / y_train.shape[0]
+Error_test_nofeatures = np.square(y_test - y_test.mean()).sum(axis=0) / y_test.shape[0]
 
 # Estimate weights for the optimal value of lambda, on entire training set
 lambdaI = opt_lambda * np.eye(M)
 lambdaI[0, 0] = 0  # Do no regularize the bias term
-w_rlr[:, k] = np.linalg.solve(XtX + lambdaI, Xty).squeeze()
+w_rlr[:] = np.linalg.solve(XtX + lambdaI, Xty).squeeze()
 # Compute mean squared error with regularization with optimal lambda
-Error_train_rlr[k] = np.square(y_train - X_train @ w_rlr[:, k]).sum(axis=0) / y_train.shape[0]
-Error_test_rlr[k] = np.square(y_test - X_test @ w_rlr[:, k]).sum(axis=0) / y_test.shape[0]
+Error_train_rlr = np.square(y_train - X_train @ w_rlr[:]).sum(axis=0) / y_train.shape[0]
+Error_test_rlr = np.square(y_test - X_test @ w_rlr[:]).sum(axis=0) / y_test.shape[0]
 
 # Estimate weights for unregularized linear regression, on entire training set
-w_noreg[:, k] = np.linalg.solve(XtX, Xty).squeeze()
+w_noreg[:] = np.linalg.solve(XtX, Xty).squeeze()
 # Compute mean squared error without regularization
-Error_train[k] = np.square(y_train - X_train @ w_noreg[:, k]).sum(axis=0) / y_train.shape[0]
-Error_test[k] = np.square(y_test - X_test @ w_noreg[:, k]).sum(axis=0) / y_test.shape[0]
+Error_train = np.square(y_train - X_train @ w_noreg[:]).sum(axis=0) / y_train.shape[0]
+Error_test = np.square(y_test - X_test @ w_noreg[:]).sum(axis=0) / y_test.shape[0]
 
 # Display the results for the last cross-validation fold
 figure(9, figsize=(15, 8))
@@ -151,7 +143,6 @@ print('- R^2 test:     {0}\n'.format((Error_test_nofeatures.sum()-Error_test_rlr
 print('Weights in last fold:')
 for m in range(M):
     print('{:>15} {:>15}'.format(attributeNames[m], np.round(w_rlr[m,-1],2)))
-
 
 # %%
 # Regression part b.1
