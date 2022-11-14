@@ -142,7 +142,7 @@ print('- R^2 test:     {0}\n'.format((Error_test_nofeatures.sum()-Error_test_rlr
 
 print('Weights in last fold:')
 for m in range(M):
-    print('{:>15} {:>15}'.format(attributeNames[m], np.round(w_rlr[m,-1],2)))
+    print('{:>15} {:>15}'.format(attributeNames[m], np.round(w_rlr[m],2)))
 
 # %%
 # Regression part b.1
