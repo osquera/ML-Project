@@ -292,6 +292,10 @@ print(f"Base vs NN CI: {ci_bn}")
 print(f"RLR vs NN p-value: {p_value_rn}")
 ci_rn = t.interval(confidence=1 - alpha, df=df, loc=r_hat[2], scale=sigma_hat[2])
 print(f"RLR vs NN CI: {ci_rn}")
+
+
+#######################################################################################################
+
 # %%
 # Classification 
 # Our method 2 is ANN
@@ -414,7 +418,6 @@ for par_idx, test_idx in CV1.split(X, y_c):
 
     # Evaluate test error
     lambda_test_err[k1] = np.sum(y_est != y_test) / len(y_test)
-
     # Neural network
     y_par_nn = y_par.reshape(len(y_par), 1)
     y_test_nn = y_test.reshape(len(y_test), 1)
@@ -484,6 +487,10 @@ t_value = r_hat / (sigma_hat * np.sqrt(1 / K2 + 1 / (K1 - 1)))
 p_value_br = 2 * t.cdf(-abs(t_value[0]), df=df)
 p_value_bn = 2 * t.cdf(-abs(t_value[1]), df=df)
 p_value_rn = 2 * t.cdf(-abs(t_value[2]), df=df)
+
+coef = model.coef_[np.argmin(k1)]
+print(f"Weights in the optimal logistic regressin model: {coef}")
+
 
 print(f"Base vs RLR p-value: {p_value_br}")
 ci_br = t.interval(confidence=1 - alpha, df=df, loc=r_hat[0], scale=sigma_hat[0])
