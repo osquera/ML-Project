@@ -471,6 +471,10 @@ print(f"Baseline gen error: {base_gen}")
 print(f"RLR gen error: {lambda_gen}")
 print(f"NN gen error: {nn_gen}")
 # %%
+# Get optimal weights for rlr
+coef = model.coef_[np.argmin(k1)]
+print(f"Weights in the optimal logistic regressin model: {coef}")
+
 # Classification test
 df = K2 - 1
 alpha = 0.05
@@ -487,10 +491,6 @@ t_value = r_hat / (sigma_hat * np.sqrt(1 / K2 + 1 / (K1 - 1)))
 p_value_br = 2 * t.cdf(-abs(t_value[0]), df=df)
 p_value_bn = 2 * t.cdf(-abs(t_value[1]), df=df)
 p_value_rn = 2 * t.cdf(-abs(t_value[2]), df=df)
-
-coef = model.coef_[np.argmin(k1)]
-print(f"Weights in the optimal logistic regressin model: {coef}")
-
 
 print(f"Base vs RLR p-value: {p_value_br}")
 ci_br = t.interval(confidence=1 - alpha, df=df, loc=r_hat[0], scale=sigma_hat[0])
