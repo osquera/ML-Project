@@ -1,0 +1,57 @@
+
+-------------------------------------------------------------------------------------------------------------------------------
+02450 Introduction to Machine Learning and Data Mining - 2022 Fall [11/04/2022, 00:48:48]
+
+
+Feedback for report no.: 1
+Group: 230
+Student(s): Jacob Borregaard Eriksen (s181487) & Anton Mosquera Storgaard (s214611) & Mathias Correll Damsgaard (s214647)
+Primary marker: Bjarke Arnskjær Hastrup
+
+Please validate the list of student ids on this feedback form to make sure it is correct and matches the group when 
+you submitted report 1 (contact the course coordinator if there are issues with group membership/ids).
+
+Note: The feedback is provided for individual group members; however, it will typiaclly be identical for all members
+unless the markers have found it necessary to differentiate the assesment and feedback.
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
+::::: Feedback for Jacob Borregaard Eriksen (s181487) :::::: 
+Generally, you have made a good report with many great sections.
+
+You made some good choices early on, fx. “narrowing the scope” to focus solely on Sydney, as advanced spatio-temporal models are beyond the scope of this course.
+
+Also, you did some good feature transformations and ended up with an almost picture perfect set of features coming in to the PC analysis. However, you never mentioned whether if you normalized these or not.
+
+The PCA section was okay, but Figure 7 was a missed opportunity to check if the PCA features were able to separate your two RainToday outcomes, and for comparison, you could also have scatter plotted the original attributes against each other, also color coded with the RainToday classlabel. This would help you to assess whether of not the overall machine learning aim seems realistic.
+
+Best of luck with the next project.
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
+::::: Feedback for Anton Mosquera Storgaard (s214611) :::::: 
+Generally, you have made a good report with many great sections.
+
+You made some good choices early on, fx. “narrowing the scope” to focus solely on Sydney, as advanced spatio-temporal models are beyond the scope of this course.
+
+Also, you did some good feature transformations and ended up with an almost picture perfect set of features coming in to the PC analysis. However, you never mentioned whether if you normalized these or not.
+
+The PCA section was okay, but Figure 7 was a missed opportunity to check if the PCA features were able to separate your two RainToday outcomes, and for comparison, you could also have scatter plotted the original attributes against each other, also color coded with the RainToday classlabel. This would help you to assess whether of not the overall machine learning aim seems realistic.
+
+Best of luck with the next project.
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
+::::: Feedback for Mathias Correll Damsgaard (s214647) :::::: 
+Generally, you have made a good report with many great sections.
+
+You made some good choices early on, fx. “narrowing the scope” to focus solely on Sydney, as advanced spatio-temporal models are beyond the scope of this course.
+
+Also, you did some good feature transformations and ended up with an almost picture perfect set of features coming in to the PC analysis. However, you never mentioned whether if you normalized these or not.
+
+The PCA section was okay, but Figure 7 was a missed opportunity to check if the PCA features were able to separate your two RainToday outcomes, and for comparison, you could also have scatter plotted the original attributes against each other, also color coded with the RainToday classlabel. This would help you to assess whether of not the overall machine learning aim seems realistic.
+
+Best of luck with the next project.
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
