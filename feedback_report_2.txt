@@ -1,0 +1,63 @@
+
+-------------------------------------------------------------------------------------------------------------------------------
+02450 Introduction to Machine Learning and Data Mining - 2022 Fall [12/07/2022, 15:58:01]
+
+
+Feedback for report no.: 2
+Group: 230
+Student(s): Jacob Borregaard Eriksen (s181487) & Anton Mosquera Storgaard (s214611) & Mathias Correll Damsgaard (s214647)
+Primary marker: Lenka Hýlová
+
+Please validate the list of student ids on this feedback form to make sure it is correct and matches the group when 
+you submitted report 2 (contact the course coordinator if there are issues with group membership/ids).
+
+Note: The feedback is provided for individual group members; however, it will typically be identical for all members
+unless the markers have found it necessary to differentiate the assessment and feedback.
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
+::::: Feedback for Jacob Borregaard Eriksen (s181487) :::::: 
+Very good report with many excellent sections showing a fine understanding of the course material. Very good job!
+
+Figure 1 would be nicer if you zoomed in on the interesting part. It is not clearly visible what value corresponds to the lowest generalization error.
+
+What is the baseline model for regression? It has to predict values based on the train data but predict always 0 (according to your code).
+
+The classification part is very nice as well as both statistical evaluations.
+
+Your conclusion and discussion is good.
+
+Overall, the report is well structured and the text is easily readable.
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
+::::: Feedback for Anton Mosquera Storgaard (s214611) :::::: 
+Very good report with many excellent sections showing a fine understanding of the course material. Very good job!
+
+Figure 1 would be nicer if you zoomed in on the interesting part. It is not clearly visible what value corresponds to the lowest generalization error.
+
+What is the baseline model for regression? It has to predict values based on the train data but predict always 0 (according to your code).
+
+The classification part is very nice as well as both statistical evaluations.
+
+Your conclusion and discussion is good.
+
+Overall, the report is well structured and the text is easily readable.
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
+::::: Feedback for Mathias Correll Damsgaard (s214647) :::::: 
+Very good report with many excellent sections showing a fine understanding of the course material. Very good job!
+
+Figure 1 would be nicer if you zoomed in on the interesting part. It is not clearly visible what value corresponds to the lowest generalization error.
+
+What is the baseline model for regression? It has to predict values based on the train data but predict always 0 (according to your code).
+
+The classification part is very nice as well as both statistical evaluations.
+
+Your conclusion and discussion is good.
+
+Overall, the report is well structured and the text is easily readable.
+
+-------------------------------------------------------------------------------------------------------------------------------
+        
